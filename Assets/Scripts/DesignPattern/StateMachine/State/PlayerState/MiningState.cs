@@ -13,12 +13,7 @@ public class MiningState : PlayerState
     public override void AnimationFinishTrigger()
     {
         base.AnimationFinishTrigger();
-        if (isAnimationFinished)
-        {
-            // Lấy OreRock từ CheckCropFieldState đã được gán trong OnTriggerEnter
-            NotifyMining?.Invoke();//MiningAbility
-            stateMachine.ChangeState(blackboard.idlePlayer);
-        }
+       
     }
 
     public override void Enter()
@@ -36,5 +31,11 @@ public class MiningState : PlayerState
     public override void LogicUpdate()
     {
         base.LogicUpdate();
+        if (isAnimationFinished)
+        {
+            // Lấy OreRock từ CheckCropFieldState đã được gán trong OnTriggerEnter
+            NotifyMining?.Invoke();//MiningAbility
+            stateMachine.ChangeState(blackboard.idlePlayer);
+        }
     }
 }

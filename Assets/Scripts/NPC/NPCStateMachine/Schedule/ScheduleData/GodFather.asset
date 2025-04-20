@@ -14,20 +14,26 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   scheduleEntries:
   - startTime: 0.25
+    endTime: 0.26
     desiredState: 1
     targetName: ChurchStopSpot
   - startTime: 0.27
+    endTime: 0
     desiredState: 1
     targetName: ShopHouse_StopSpot2
   - startTime: 0.3
+    endTime: 0.39
     desiredState: 1
     targetName: Brigde
   - startTime: 0.4
+    endTime: 0.79
     desiredState: 1
     targetName: GodFatherSpotSleep
   - startTime: 0.8
+    endTime: 0.84
     desiredState: 1
     targetName: GodFatherSpot
   - startTime: 0.85
+    endTime: 1
     desiredState: 1
     targetName: GodFatherSpotSleep

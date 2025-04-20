@@ -271,7 +271,7 @@ public class BuildingSystem : UIRequirementDisplay
 
         // Xóa danh sách các công trình đã đặt
         placedBuildings.Clear();
-        Debug.Log("🔴 Đã xóa toàn bộ công trình cũ trước khi load!");
+        Debug.Log(" Đã xóa toàn bộ công trình cũ trước khi load!");
     }
 
 }

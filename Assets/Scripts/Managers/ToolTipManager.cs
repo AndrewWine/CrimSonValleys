@@ -10,14 +10,15 @@ public class TooltipManager : MonoBehaviour
     public static Action<ItemData> NotifyEquipItem;
 
     [Header("Elements")]
-    private ItemData currentItemData; // Sử dụng ItemData thay vì int để lưu trữ đầy đủ thông tin item
+    private ItemData currentItemData;
+
     [SerializeField] private GameObject tooltipPanel;
     [SerializeField] private TextMeshProUGUI itemNameText;
     [SerializeField] private TextMeshProUGUI itemPriceText;
     [SerializeField] private TextMeshProUGUI itemDamageText;
     [SerializeField] private TextMeshProUGUI itemDurabilityText;
     [SerializeField] private Image itemIcon;
-    [SerializeField] GameObject EquipButton;
+    [SerializeField] private GameObject EquipButton;
 
     private void Awake()
     {
@@ -30,19 +31,23 @@ public class TooltipManager : MonoBehaviour
         BlackSmithInteraction.OpenedSmithyWindow += CheckCanEnableEquipButton;
         TraderInteraction.OpenedMarketWindow += CheckCanEnableEquipButton;
     }
+
+    private void OnDisable()
+    {
+        BlackSmithInteraction.OpenedSmithyWindow -= CheckCanEnableEquipButton;
+        TraderInteraction.OpenedMarketWindow -= CheckCanEnableEquipButton;
+    }
+
     public void ShowToolTipOnTradeWindow(ItemData itemData)
     {
-        currentItemData = itemData; // Lưu ItemData đầy đủ
-
+        currentItemData = itemData;
         itemNameText.text = itemData.itemName;
         itemIcon.sprite = itemData.icon;
-        itemPriceText.text = $"Price: {itemData.price.ToString()}$";
-
+        itemPriceText.text = $"Price: {itemData.price}$";
         itemDamageText.text = itemData.damage > 0 ? $"Damage: {itemData.damage}" : "";
         itemDurabilityText.text = itemData.durability > 0 ? $"Durability: {itemData.durability}" : "";
         tooltipPanel.SetActive(true);
     }
-
 
     public void HideTooltip()
     {
@@ -55,14 +60,21 @@ public class TooltipManager : MonoBehaviour
 
     private void CheckCanEnableEquipButton(bool check)
     {
-        EquipButton.gameObject.SetActive(!check);
+        if (EquipButton != null)
+        {
+            EquipButton.SetActive(!check);
+        }
+        else
+        {
+            Debug.LogWarning("EquipButton is null or destroyed!");
+        }
     }
 
     public void OnEquipItem()
     {
         if (currentItemData != null)
         {
-            NotifyEquipItem?.Invoke(currentItemData);//EquipItem
+            NotifyEquipItem?.Invoke(currentItemData);
             Debug.Log("EquipItem equiptype " + currentItemData.equipType);
         }
         else

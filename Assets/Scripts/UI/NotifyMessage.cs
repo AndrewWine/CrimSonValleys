@@ -1,4 +1,6 @@
-﻿using System.Collections;
+﻿using System;
+using System.Collections;
+using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -9,8 +11,12 @@ public class NotifyMessage : MonoBehaviour
     [SerializeField] private GameObject failMessage;
     [SerializeField] private GameObject completeMessage;
     [SerializeField] private GameObject itemProcess;
+    [SerializeField] private GameObject BacKGround;
+
     private Image itemIcon;
     private TextMeshProUGUI itemCount;
+    private Queue<ShowItemPickup> itemQueue = new Queue<ShowItemPickup>();
+    private bool isShowingItem;
 
     private void Start()
     {
@@ -38,6 +44,7 @@ public class NotifyMessage : MonoBehaviour
         failMessage.SetActive(false);
         completeMessage.SetActive(false);
         itemProcess.SetActive(false);
+        BacKGround.SetActive(false);
         itemIcon = itemProcess.GetComponentInChildren<Image>();
         itemCount = itemProcess.GetComponentInChildren<TextMeshProUGUI>();
     }
@@ -52,35 +59,43 @@ public class NotifyMessage : MonoBehaviour
         StartCoroutine(ShowTemporaryMessage(completeMessage));
     }
 
-    // Khi nhận sự kiện từ EventBus, gọi hàm hiển thị icon
     private void OnShowItemPickup(ShowItemPickup eventData)
     {
-        TriggerItemIcon(eventData);
+        itemQueue.Enqueue(eventData);
+        if (!isShowingItem)
+        {
+            StartCoroutine(ProcessItemQueue());
+        }
     }
 
-    public void TriggerItemIcon(ShowItemPickup itemData)
+    private IEnumerator ProcessItemQueue()
     {
-        ItemData data = DataManagers.instance.GetItemDataByName(itemData.itemName);
-
-        if (data != null)
+        isShowingItem = true;
+        while (itemQueue.Count > 0)
         {
-            itemIcon.sprite = data.icon;
-            itemIcon.rectTransform.sizeDelta = new Vector2(100f, 100f); // ⚡ Đặt size icon
-
-            itemCount.text = "x" + itemData.itemAmount.ToString();
-            StartCoroutine(ShowTemporaryMessage(itemProcess));
+            ShowItemPickup showItemPickup = itemQueue.Dequeue();
+            ItemData itemDataByName = DataManagers.instance.GetItemDataByName(showItemPickup.itemName);
+            if (itemDataByName != null)
+            {
+                itemIcon.sprite = itemDataByName.icon;
+                itemIcon.rectTransform.sizeDelta = new Vector2(100f, 100f);
+                itemCount.text = "x" + showItemPickup.itemAmount;
+                itemProcess.SetActive(false);
+                yield return null;
+                itemProcess.SetActive(true);
+                BacKGround.SetActive(true);
+                yield return new WaitForSeconds(1.5f);
+                itemProcess.SetActive(false);
+                BacKGround.SetActive(false);
+            }
         }
-        else
-        {
-            Debug.LogError($"Không tìm thấy dữ liệu cho vật phẩm: {itemData.itemName}");
-        }
+        isShowingItem = false;
     }
-
 
     private IEnumerator ShowTemporaryMessage(GameObject target)
     {
-        target.gameObject.SetActive(true);
+        target.SetActive(true);
         yield return new WaitForSeconds(2f);
-        target.gameObject.SetActive(false);
+        target.SetActive(false);
     }
 }

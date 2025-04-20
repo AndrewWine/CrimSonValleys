@@ -1,74 +1,76 @@
-﻿using TMPro;
+﻿using System;
+using System.Collections;
+using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
-using System.Collections;
 
+// Token: 0x020000CC RID: 204
 public class StaminaUI : MonoBehaviour
 {
-    [SerializeField] private Slider staminaSlider; // Thanh hiển thị Stamina
-    [SerializeField] private TextMeshProUGUI staminaText; // Text để hiển thị Stamina
-    [SerializeField] private Gradient sliderColorGradient; // Gradient để thay đổi màu sắc
-
-    private Coroutine staminaCoroutine;
-
+    // Khi UI được bật, đăng ký lắng nghe sự kiện thay đổi stamina
     private void OnEnable()
     {
         EventBus.Subscribe<StaminaChangedEvent>(OnStaminaChanged);
     }
 
+    // Khi UI bị tắt, huỷ đăng ký sự kiện
     private void OnDisable()
     {
         EventBus.Unsubscribe<StaminaChangedEvent>(OnStaminaChanged);
     }
 
+    // Gọi khi bắt đầu, cập nhật UI với stamina hiện tại
     private void Start()
     {
-        staminaSlider.maxValue = 100;  // Đảm bảo giá trị tối đa là 100
-        staminaSlider.value = 100;     // Đặt thanh đầy đủ (100 Stamina)
-        UpdateStaminaText(100);        // Bắt đầu với Stamina đầy (100)
-        staminaSlider.fillRect.GetComponent<Image>().color = sliderColorGradient.Evaluate(1f);  // Màu ban đầu (xanh)
+        UpdateStaminaUI(blackBoard.stamina);
     }
 
+    // Gọi khi có sự kiện stamina thay đổi
     private void OnStaminaChanged(StaminaChangedEvent e)
     {
-        // Nếu có Coroutine đang chạy, hủy nó
         if (staminaCoroutine != null)
         {
             StopCoroutine(staminaCoroutine);
         }
-
-        // Chạy hiệu ứng từ từ
-        staminaCoroutine = StartCoroutine(UpdateStaminaOverTime(e.NewStamina));
+        staminaCoroutine = StartCoroutine(UpdateStaminaUIOverTime(e.NewStamina));
     }
 
-    private IEnumerator UpdateStaminaOverTime(float targetStamina)
+    // Cập nhật UI stamina một cách mượt mà theo thời gian
+    private IEnumerator UpdateStaminaUIOverTime(float targetStamina)
     {
-        float startStamina = staminaSlider.value;
+        float startStamina = blackBoard.stamina;
         float elapsedTime = 0f;
-        float duration = 1f; // Thời gian chuyển đổi (giây)
+        float duration = 1f;
 
         while (elapsedTime < duration)
         {
             elapsedTime += Time.deltaTime;
-            staminaSlider.value = Mathf.Lerp(startStamina, targetStamina, elapsedTime / duration);
-            UpdateStaminaText(Mathf.Lerp(startStamina, targetStamina, elapsedTime / duration));
-
-            // Cập nhật màu của thanh Slider theo giá trị Stamina
-            float sliderValue = staminaSlider.value / 100f;
-            staminaSlider.fillRect.GetComponent<Image>().color = sliderColorGradient.Evaluate(sliderValue);
-
+            float stamina = Mathf.Lerp(startStamina, targetStamina, elapsedTime / duration);
+            UpdateStaminaUI(stamina);
             yield return null;
         }
 
-        // Đảm bảo giá trị cuối cùng chính xác
-        staminaSlider.value = targetStamina;
-        UpdateStaminaText(targetStamina);
-        staminaSlider.fillRect.GetComponent<Image>().color = sliderColorGradient.Evaluate(targetStamina / 100f);
+        UpdateStaminaUI(targetStamina);
+        blackBoard.stamina = targetStamina;
     }
 
-    // Cập nhật số Stamina trên Text UI
-    private void UpdateStaminaText(float stamina)
+    // Cập nhật UI trực tiếp
+    private void UpdateStaminaUI(float stamina)
     {
-        staminaText.text = $"{stamina:F0}";  // Hiển thị số Stamina (F0 để không có số thập phân)
+        float normalized = Mathf.Clamp01(stamina / 100f);
+        staminaIcon.color = sliderColorGradient.Evaluate(normalized);
+        staminaText.text = $"{stamina:F0}";
     }
+
+    [Header("UI Components")]
+    [SerializeField] private Image staminaIcon;
+    [SerializeField] private TextMeshProUGUI staminaText;
+
+    [Header("Gradient for Stamina Bar")]
+    [SerializeField] private Gradient sliderColorGradient;
+
+    [Header("Player Blackboard Reference")]
+    [SerializeField] private PlayerBlackBoard blackBoard;
+
+    private Coroutine staminaCoroutine;
 }

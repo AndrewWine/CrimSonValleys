@@ -1,5 +1,4 @@
-﻿using System.Collections;
-using System.Collections.Generic;
+﻿using System;
 using UnityEngine;
 
 public class PlayerBlackBoard : EntityBlackboard
@@ -16,19 +15,18 @@ public class PlayerBlackBoard : EntityBlackboard
     public JumpState jumpState;
     public SleepState sleepState;
 
-
     [Header("Elements")]
     public PlayerToolSelector playerToolSelector;
     public Transform playerTransform;
 
     [Header("Attribute")]
-    public float health = 100;
-    public float maxHealth = 100;
-    public float stamina = 100;
-    public float maxStamina = 100;
-    public float Axedamage = 1;
-    public float Pickaxedamage = 1;
-    public float speed = 10f;
+    public float health = 100f;
+    public float maxHealth = 100f;
+    public float stamina = 100f;
+    public float maxStamina = 100f;
+    public float Axedamage = 1f;
+    public float Pickaxedamage = 1f;
+    public float speed;
     public float runThreshold = 0.5f;
     public float moveSpeedMultiplier = 100f;
     public float JumpForce = 100f;
@@ -36,20 +34,20 @@ public class PlayerBlackBoard : EntityBlackboard
     [Header("Crop & seed")]
     public ItemData seed;
 
-
-
     [Header("Check Variable")]
-    public bool isGround = false;
-    public bool sowButtonPressed = false;
-    public bool harvestButtonPress = false;
-    public bool waterButtonPressed = false;
-    public bool hoeButtonPressed = false;
-    public bool cutButtonPressed = false;
-    public bool miningButtonPressed = false;
-    public bool jumpButtonPressed = false;
-    public bool sleepButtonPressed = false;
-    public bool shovelButtonPressed = false;
-    public bool timeToSleep = false;
-    public bool isTree = false;
-
+    public bool isGround;
+    public bool sowButtonPressed;
+    public bool removeWormsButtonPressed;
+    public bool harvestButtonPress;
+    public bool waterButtonPressed;
+    public bool hoeButtonPressed;
+    public bool cutButtonPressed;
+    public bool miningButtonPressed;
+    public bool jumpButtonPressed;
+    public bool sleepButtonPressed;
+    public bool shovelButtonPressed;
+    public bool timeToSleep;
+    public bool isTree;
+    public bool isOre;
+    public bool isFarmArea;
 }

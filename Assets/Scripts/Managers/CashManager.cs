@@ -64,4 +64,11 @@ public class CashManager : MonoBehaviour
         PlayerPrefs.SetInt("Coins", coins);
         PlayerPrefs.Save();
     }
+
+    public void SetCoins(int amount)
+    {
+        this.coins = amount;
+        this.SaveData();
+        this.UpdateCoinsContainers();
+    }
 }

@@ -81,7 +81,7 @@ public class DayNightCycle : MonoBehaviour
         }
     }
 
-    private void AdjustSun()
+    public void AdjustSun()
     {
         dailyRotation.localRotation = Quaternion.Euler(0f, 0f, timeOfDay * 360f);
 
@@ -105,7 +105,7 @@ public class DayNightCycle : MonoBehaviour
         sun.color = sunColor.Evaluate(intensity);
     }
 
-    private void AdjustSkybox()
+    public void AdjustSkybox()
     {
         // Điều chỉnh rotation của skybox theo thời gian trong ngày
         float skyRotation = timeOfDay * 360f;

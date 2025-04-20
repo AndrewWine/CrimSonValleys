@@ -1,71 +1,44 @@
-﻿using System.Collections;
-using System.Collections.Generic;
+﻿using System;
 using UnityEngine;
 
 public class MiningAbility : MonoBehaviour
 {
     [Header(" Elements ")]
-    [SerializeField] public Transform checkGameObject;
+    [SerializeField]
+    public Transform checkGameObject;
     [Header(" Settings ")]
     private bool canCut;
-    private OreRock targetOreRock;
     private PlayerBlackBoard blackBoard;
-
+    [Header("Action")]
+    public static Action doDamageToOre;
     private void OnEnable()
     {
-        MiningState.NotifyMining += OnMiningButtonPressed;
+        MiningState.NotifyMining = (Action)Delegate.Combine(MiningState.NotifyMining, new Action(this.OnMiningButtonPressed));
     }
 
     private void OnDisable()
     {
-        MiningState.NotifyMining -= OnMiningButtonPressed;
-    }
-    void Start()
-    {
-        blackBoard = GetComponentInParent<PlayerBlackBoard>();
+        MiningState.NotifyMining = (Action)Delegate.Remove(MiningState.NotifyMining, new Action(this.OnMiningButtonPressed));
     }
 
+    private void Start()
+    {
+        this.blackBoard = base.GetComponentInParent<PlayerBlackBoard>();
+    }
 
     public void OnMiningButtonPressed()
     {
-        if (targetOreRock != null)
-        {
-
-            targetOreRock.TakeDamage(blackBoard.Pickaxedamage);
-
-        }
-        else
+        if (!this.blackBoard.isOre)
         {
             return;
         }
-    }
-
-    // Kiểm tra xem có đối tượng nào trong vùng trigger không
-    private void OnTriggerStay(Collider other)
-    {
-
-        if (other.CompareTag("Ore"))
+        Action action = MiningAbility.doDamageToOre;
+        if (action == null)
         {
-            targetOreRock = other.GetComponent<OreRock>();
-
-            if (targetOreRock != null)
-            {
-            }
-            else
-            {
-                return;
-            }
+            return;
         }
+        action();
     }
 
-
-    private void OnTriggerExit(Collider other)
-    {
-
-        if (other.CompareTag("Ore"))
-        {
-            Debug.Log($"Exited Ore: {other.gameObject.name}");
-            targetOreRock = null;
-        }
-    }
+ 
 }

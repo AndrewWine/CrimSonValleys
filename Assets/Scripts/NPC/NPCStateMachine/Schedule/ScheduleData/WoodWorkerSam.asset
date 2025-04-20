@@ -1,0 +1,59 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: dda9e78e26da8dd4d8dfa1e92e3433c6, type: 3}
+  m_Name: WoodWorkerSam
+  m_EditorClassIdentifier: 
+  scheduleEntries:
+  - startTime: 0.25
+    endTime: 0.253
+    desiredState: 1
+    targetName: BlackSmithPlace
+  - startTime: 0.8
+    endTime: 0.849
+    desiredState: 1
+    targetName: BlackSmithChurchStopSpot
+  - startTime: 0.85
+    endTime: 1
+    desiredState: 1
+    targetName: BlackSmithStopSpotSleep
+  - startTime: 0.252
+    endTime: 0
+    desiredState: 0
+    targetName: BlackSmithPlace
+  - startTime: 0.255
+    endTime: 0.26
+    desiredState: 1
+    targetName: LumberHouseStopSpot1
+  - startTime: 0.261
+    endTime: 0.35
+    desiredState: 2
+    targetName: LumberHouseStopSpot1
+  - startTime: 0.351
+    endTime: 0.3515
+    desiredState: 1
+    targetName: WayToMine1
+  - startTime: 0.351
+    endTime: 0.352
+    desiredState: 1
+    targetName: WayToMine2
+  - startTime: 0.355
+    endTime: 0.365
+    desiredState: 1
+    targetName: WayToMine2
+  - startTime: 0.366
+    endTime: 0.37
+    desiredState: 1
+    targetName: WayToMine3
+  - startTime: 0.372
+    endTime: 0.79
+    desiredState: 2
+    targetName: WayToMine3

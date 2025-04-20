@@ -1,6 +1,9 @@
 ﻿using System.Collections.Generic;
 using UnityEngine;
 
+/// <summary>
+/// Quest ScriptableObject lưu trữ thông tin nhiệm vụ, yêu cầu và phần thưởng.
+/// </summary>
 [CreateAssetMenu(fileName = "NewQuest", menuName = "Scriptable Objects/Quest", order = 1)]
 public class Quest : ScriptableObject
 {
@@ -9,6 +12,7 @@ public class Quest : ScriptableObject
     public string description;
     public bool isActive;
     public bool isCompleted;
+    public string questGiverID;
 
     [Header("Quest Requirements")]
     public List<QuestRequirement> requirements = new List<QuestRequirement>();
@@ -16,18 +20,33 @@ public class Quest : ScriptableObject
     [Header("Quest Rewards")]
     public List<QuestReward> rewards = new List<QuestReward>();
 
-    public string questGiverID; // ID của NPC đã giao nhiệm vụ
+    /// <summary>
+    /// Trả về danh sách yêu cầu nhiệm vụ.
+    /// </summary>
+    public List<QuestRequirement> GetRequirements()
+    {
+        return requirements;
+    }
 
-    public List<QuestRequirement> GetRequirements() => requirements;
-    public List<QuestReward> GetRewards() => rewards;
+    /// <summary>
+    /// Trả về danh sách phần thưởng.
+    /// </summary>
+    public List<QuestReward> GetRewards()
+    {
+        return rewards;
+    }
 
+    /// <summary>
+    /// Kiểm tra xem tất cả yêu cầu đã hoàn thành chưa.
+    /// </summary>
     public bool CheckCompletion()
     {
         if (isCompleted) return true;
 
-        foreach (var req in requirements)
+        foreach (var requirement in requirements)
         {
-            if (!req.IsCompleted()) return false;
+            if (!requirement.IsCompleted())
+                return false;
         }
 
         isCompleted = true;
@@ -35,6 +54,9 @@ public class Quest : ScriptableObject
         return true;
     }
 
+    /// <summary>
+    /// Hoàn thành nhiệm vụ và cấp phần thưởng.
+    /// </summary>
     public void CompleteQuest()
     {
         if (!isCompleted) return;
@@ -44,28 +66,36 @@ public class Quest : ScriptableObject
         EventBus.Publish(new QuestCompletedEvent(questName));
     }
 
-    private void GiveRewards()
+    /// <summary>
+    /// Cấp phần thưởng cho người chơi.
+    /// </summary>
+    public void GiveRewards()
     {
         foreach (var reward in rewards)
         {
-            EventBus.Publish(new ItemPickedUp(reward.itemName, reward.amount));
+            EventBus.Publish<ItemPickedUp>(new ItemPickedUp(reward.itemName, reward.amount));
             Debug.Log($"Nhận được {reward.amount}x {reward.itemName}");
         }
     }
 
+    /// <summary>
+    /// Tạo bản sao nhiệm vụ, reset trạng thái và gán ID người giao nhiệm vụ.
+    /// </summary>
     public Quest Clone(string giverID)
     {
-        Quest clonedQuest = Instantiate(this);
-        clonedQuest.requirements = new List<QuestRequirement>();
-        foreach (var req in requirements)
-        {
-            clonedQuest.requirements.Add(new QuestRequirement(req.requiredItemName, req.requiredItemAmount));
-        }
-        clonedQuest.rewards = new List<QuestReward>(rewards);
-        clonedQuest.isActive = false;
-        clonedQuest.isCompleted = false;
-        clonedQuest.questGiverID = giverID; // Gán NPC đã giao nhiệm vụ
+        Quest clone = Instantiate(this);
+        clone.requirements = new List<QuestRequirement>();
 
-        return clonedQuest;
+        foreach (var requirement in requirements)
+        {
+            clone.requirements.Add(new QuestRequirement(requirement.requiredItemName, requirement.requiredItemAmount));
+        }
+
+        clone.rewards = new List<QuestReward>(rewards);
+        clone.isActive = false;
+        clone.isCompleted = false;
+        clone.questGiverID = giverID;
+
+        return clone;
     }
 }

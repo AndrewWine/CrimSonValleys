@@ -9,9 +9,7 @@ public class CutState : PlayerState
     public override void AnimationFinishTrigger()
     {
         base.AnimationFinishTrigger();
-        if(isAnimationFinished)
-            notifyCutting?.Invoke();//CuttingAbillity
-            stateMachine.ChangeState(blackboard.idlePlayer);
+      
     }
 
     public override void Enter()
@@ -30,6 +28,11 @@ public class CutState : PlayerState
     public override void LogicUpdate()
     {
         base.LogicUpdate();
+        if (isAnimationFinished)
+        {
+            notifyCutting?.Invoke();//CuttingAbillity
+            stateMachine.ChangeState(blackboard.idlePlayer);
+        }  
     }
 
     public override void PhysicUpdate()

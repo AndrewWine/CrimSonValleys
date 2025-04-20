@@ -131,7 +131,7 @@ Material:
     - _WINDMASKONOFF: 0
     - _WindDensity: 0.01
     - _WindDensity1: 0.01
-    - _WindMovement: 10
+    - _WindMovement: 0
     - _WindMovement1: 10
     - _WindStrength: 1
     - _WindStrength1: 1

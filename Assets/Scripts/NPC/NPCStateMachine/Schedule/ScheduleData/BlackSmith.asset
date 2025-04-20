@@ -13,15 +13,7 @@ MonoBehaviour:
   m_Name: BlackSmith
   m_EditorClassIdentifier: 
   scheduleEntries:
-  - startTime: 0.25
-    desiredState: 1
-    targetName: BlackSmithPlace
-  - startTime: 0.8
-    desiredState: 1
-    targetName: BlackSmithChurchStopSpot
-  - startTime: 0.85
-    desiredState: 1
-    targetName: BlackSmithStopSpotSleep
-  - startTime: 0.252
+  - startTime: 0
+    endTime: 1
     desiredState: 0
     targetName: BlackSmithPlace

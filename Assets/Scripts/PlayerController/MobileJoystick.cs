@@ -1,90 +1,99 @@
-﻿using System.Collections;
-using System.Collections.Generic;
+﻿using System;
 using UnityEngine;
-using UnityEngine.EventSystems;
 
-public class MobileJoystick : MonoBehaviour, IPointerDownHandler, IDragHandler, IPointerUpHandler
+public class MobileJoystick : MonoBehaviour
 {
-    [Header(" Elements ")]
-    [SerializeField] private RectTransform joystickOutline;
-    [SerializeField] private RectTransform joystickKnob;
-    [SerializeField] private Transform playerTransform; // Nhân vật
+    // Các biến thành phần
+    [Header("Elements")]
+    [SerializeField]
+    private RectTransform joystickOutline;
+    [SerializeField]
+    private RectTransform joystickKnob;
+    [SerializeField]
+    private Transform playerTransform;
 
-    [Header(" Setting ")]
-    [SerializeField] private float moveFactor;
+    [Header("Settings")]
+    [SerializeField]
+    private float moveFactor = 1f;
+
     private Vector2 clickedPosition;
     private Vector2 move;
-    private bool canControl;
-    private float maxDistanceOfKnob = 100f; // Giới hạn di chuyển của joystickKnob
-    [SerializeField] private float rotationSpeed; // Tốc độ xoay nhân vật
+    private float maxDistanceOfKnob = 100f;
+    [SerializeField]
+    private float rotationSpeed = 1500f;
 
-    void Start()
+    private bool isRotatingCamera;
+    private bool isRightMouseHeld;
+
+    // Các phương thức khởi tạo
+    private void Start()
     {
-        HideJoystick();
+        this.HideJoystick();
     }
 
-    void Update()
+    private void Update()
     {
-        if (playerTransform != null && move != Vector2.zero)
+        if (Input.GetMouseButtonDown(1))
         {
-            // Xoay nhân vật theo hướng joystick
-            float rotationAmount = move.x * rotationSpeed * Time.deltaTime;
-            playerTransform.Rotate(0, rotationAmount, 0);
+            this.CheckIsRightMouseDown();
+        }
+        if (this.isRightMouseHeld && Input.GetMouseButton(1))
+        {
+            this.RotateCamera();
+        }
+        if (Input.GetMouseButtonUp(1))
+        {
+            this.isRightMouseHeld = false;
+            this.isRotatingCamera = false;
+            this.HideJoystick();
         }
     }
 
-    public void OnPointerDown(PointerEventData eventData)
+    private void RotateCamera()
     {
-        clickedPosition = eventData.position;
-        joystickOutline.position = clickedPosition;
-        joystickKnob.position = clickedPosition;
-        ShowJoystick();
-        canControl = true;
-    }
-
-    public void OnDrag(PointerEventData eventData)
-    {
-        if (!canControl) return;
-
-        Vector2 currentPosition = eventData.position;
-        Vector2 direction = currentPosition - clickedPosition;
-
-        if (direction.magnitude > maxDistanceOfKnob)
+        this.isRotatingCamera = true;
+        Vector2 vector = new Vector2(Input.mousePosition.x, Input.mousePosition.y) - this.clickedPosition;
+        if (vector.magnitude > this.maxDistanceOfKnob)
         {
-            direction = direction.normalized * maxDistanceOfKnob;
+            vector = vector.normalized * this.maxDistanceOfKnob;
         }
-
-        joystickKnob.position = clickedPosition + direction;
-        move = (direction / maxDistanceOfKnob) * moveFactor;
+        this.joystickKnob.position = this.clickedPosition + vector;
+        this.move = Vector2.zero;
+        if (this.playerTransform != null && vector != Vector2.zero)
+        {
+            float yAngle = vector.x * this.rotationSpeed * Time.deltaTime;
+            this.playerTransform.Rotate(0f, yAngle, 0f);
+        }
     }
 
-    public void OnPointerUp(PointerEventData eventData)
+
+    private void CheckIsRightMouseDown()
     {
-        HideJoystick();
+        this.isRightMouseHeld = true;
+        this.clickedPosition = Input.mousePosition;
+        this.joystickOutline.position = this.clickedPosition;
+        this.joystickKnob.position = this.clickedPosition;
     }
 
-    private void ShowJoystick()
+    public void ShowJoystick()
     {
-        joystickOutline.gameObject.SetActive(true);
+        this.joystickOutline.gameObject.SetActive(true);
     }
 
     private void HideJoystick()
     {
-        joystickOutline.gameObject.SetActive(false);
-        canControl = false;
-        move = Vector2.zero;
+        this.joystickOutline.gameObject.SetActive(false);
+        this.move = Vector2.zero;
     }
 
     public Vector2 GetMoveVector()
     {
-        return move;
+        if (this.isRotatingCamera)
+        {
+            return Vector2.zero;
+        }
+        return this.move;
     }
-    public void ClickOnJoystrickZoneCallback()
-    {
-        clickedPosition = Input.mousePosition;
-        joystickOutline.position = clickedPosition;
-        joystickKnob.position = joystickOutline.position;
-        ShowJoystick();
-        canControl = true;
-    }
+
+  
 }

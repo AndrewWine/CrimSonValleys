@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
+using System.Collections;
 
 public class UISelectButton : MonoBehaviour
 {
@@ -77,6 +78,7 @@ public class UISelectButton : MonoBehaviour
             return;
         }
 
+
         Inventory inventory = inventoryManager.GetInventory();
         InventoryItem[] inventoryItems = inventory.GetInventoryItems();
         List<ItemData> validSeeds = new();
@@ -95,16 +97,35 @@ public class UISelectButton : MonoBehaviour
 
     private void GenerateButtons<T>(IEnumerable<T> dataList, Transform buttonContainer, Button buttonPrefab, Action<T> onClickAction, bool isTradeUI = false)
     {
-        // Xóa nút cũ
-        foreach (Transform child in buttonContainer)
+        if (this != null && gameObject.activeInHierarchy)
         {
-            Destroy(child.gameObject);
+            StartCoroutine(GenerateButtonsDelayed(dataList, buttonContainer, buttonPrefab, onClickAction, isTradeUI));
+        }
+    }
+
+    private IEnumerator GenerateButtonsDelayed<T>(IEnumerable<T> dataList, Transform buttonContainer, Button buttonPrefab, Action<T> onClickAction, bool isTradeUI)
+    {
+        yield return null;
+
+        // Kiểm tra object có bị hủy không trước khi tiếp tục
+        if (this == null || !gameObject.activeInHierarchy) yield break;
+
+        // Xóa nút cũ
+        for (int i = buttonContainer.childCount - 1; i >= 0; i--)
+        {
+            Transform buttonTransform = buttonContainer.GetChild(i);
+            if (buttonTransform != null)
+            {
+                Destroy(buttonTransform.gameObject);
+            }
         }
 
-        if (isTradeUI) clickedBorderDictionary.Clear(); // Nếu là Trade UI, reset ClickedBorder dictionary
+        if (isTradeUI) clickedBorderDictionary.Clear();
 
         foreach (var data in dataList)
         {
+            if (this == null || !gameObject.activeInHierarchy) yield break;
+
             Button newButton = Instantiate(buttonPrefab, buttonContainer);
             string itemName;
             Sprite icon;
@@ -123,11 +144,12 @@ public class UISelectButton : MonoBehaviour
 
             newButton.name = itemName;
 
-            // Gán tên vào TextMeshProUGUI
             TextMeshProUGUI itemNameText = newButton.transform.Find("ItemName")?.GetComponent<TextMeshProUGUI>();
-            if (itemNameText != null) itemNameText.text = itemName;
+            if (itemNameText != null)
+            {
+                itemNameText.text = itemName;
+            }
 
-            // Gán icon vào Image
             Image iconImage = newButton.transform.Find("Icon")?.GetComponent<Image>();
             if (iconImage != null && icon != null)
             {
@@ -136,7 +158,6 @@ public class UISelectButton : MonoBehaviour
                 iconImage.rectTransform.sizeDelta = new Vector2(70, 70);
             }
 
-            // Nếu là Trade UI, thêm ClickedBorder vào Dictionary
             if (isTradeUI && data is ItemData tradeItem)
             {
                 Transform clickedBorder = newButton.transform.Find("ClickedBorder");
@@ -147,12 +168,13 @@ public class UISelectButton : MonoBehaviour
                 }
             }
 
-            // Thêm sự kiện click
             newButton.onClick.AddListener(() => onClickAction?.Invoke(data));
-
             Debug.Log($"Tạo nút {itemName} với icon {icon?.name}");
         }
     }
+
+
+
 
     public void SetClickedBorderActive(ItemData item, bool isActive)
     {

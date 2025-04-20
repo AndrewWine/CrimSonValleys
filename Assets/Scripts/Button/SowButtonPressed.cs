@@ -1,17 +1,20 @@
-using System.Collections;
-using System.Collections.Generic;
+using System;
 using UnityEngine;
+using UnityEngine.UIElements;
 
+// Token: 0x02000041 RID: 65
 public class SowButtonPressed : MonoBehaviour
 {
     private PlayerBlackBoard blackboard;
-
     private void Start()
     {
-        blackboard = GetComponentInParent<PlayerBlackBoard>();
+        this.blackboard = base.GetComponentInParent<PlayerBlackBoard>();
     }
+
     public void PressSowButton()
     {
-        blackboard.sowButtonPressed = true;
+        this.blackboard.sowButtonPressed = true;
     }
+
+    
 }

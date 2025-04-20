@@ -1,31 +1,60 @@
 ﻿using System;
 using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
 
-  
+/// <summary>
+/// Quản lý 1 ô đất trong hệ thống trồng trọt.
+/// </summary>
 public class CropTile : MonoBehaviour
 {
+    public TileFieldState state;
 
-    private TileFieldState state;
     [Header("Elements")]
-    private Transform cropParent;
     [SerializeField] private MeshRenderer tileRenderer;
+    [SerializeField] private Material infestedMaterial;
+
+    private Material originalMaterial;
+    private Coroutine infestationCoroutine;
+    private Transform cropParent;
     private Crop crop;
-    private ItemData cropData;
-    private int dropAmount ;
+
+    private int dropAmount;
+    private int DebuffAmount;
+    private int BuffAmount;
+
+    private string cropFieldID;
+    public CropField parentField;
+    public Vector3Int tileGridPosition;
+
+    public PlacedItemData placedItemData;
+    public ItemData cropData;
+    public bool hasCrop;
+
     [Header("Actions")]
     public static Action<string, int> onCropHarvested;
 
-    [Header("Buff and Debuff CrimsonMoon event")]
-    private int DebuffAmount;// cái này sau này dùng cho sự kiện CrimsonMoon nếu kịp làm cốt truyện
-    private int BuffAmount ;// cái này sau này dùng cho sự kiện CrimsonMoon nếu kịp làm cốt truyện
-
-    void Start()
+    private void Awake()
     {
-        cropParent = GetComponent<Transform>();
+        parentField = GetComponentInParent<CropField>();
+        if (parentField != null)
+            cropFieldID = parentField.fieldID;
+    }
+
+    private void Start()
+    {
+        cropParent = transform;
         state = TileFieldState.Empty;
         InitializeSettings();
+    }
+
+    private void OnEnable()
+    {
+        RemoveWormsButton.removeWorms += CureInfestation;
+    }
+
+    private void OnDisable()
+    {
+        RemoveWormsButton.removeWorms -= CureInfestation;
     }
 
     private void InitializeSettings()
@@ -35,73 +64,167 @@ public class CropTile : MonoBehaviour
         BuffAmount = UnityEngine.Random.Range(1, 3);
     }
 
-    private void OnDisable()
-    {
-    }
-    public bool IsEmpty()
-    {
-       return state == TileFieldState.Empty;
+    public bool HasCrop() => crop != null || hasCrop;
 
-    }
-    public void Sow(ItemData cropData)
-    {
-        state = TileFieldState.Sown;
+    public bool IsEmpty() => state == TileFieldState.Empty;
 
-        if (cropData == null || cropData.itemPrefab == null)
+    public bool IsSown() => state == TileFieldState.Sown;
+
+    public bool IsReadyToHarvest() => crop != null && crop.IsFullyGrown();
+
+    public void Sow(ItemData data)
+    {
+        if (data == null || data.itemPrefab == null)
         {
-            Debug.LogError("CropData or CropPrefab is null!");
-            return; // Trả về nếu cropData hoặc cropPrefab là null
+            Debug.LogError("CropData hoặc prefab null!");
+            return;
         }
 
-        Debug.Log("Sowing");
         state = TileFieldState.Sown;
+        cropData = data;
 
-        // Tạo đối tượng từ prefab
-        Crop crop = Instantiate(cropData.itemPrefab, transform.position, Quaternion.identity, cropParent) as Crop;//ép kiểu
+        crop = Instantiate(data.itemPrefab, transform) as Crop;
+        crop.transform.localPosition = Vector3.zero;
+        crop.transform.localScale = new Vector3(transform.localScale.x, transform.localScale.y * 10f, transform.localScale.z);
+        crop.itemData = data;
+        crop.isFullyGrown = false;
 
-        // Cập nhật localScale sau khi khởi tạo
-        crop.transform.localScale = new Vector3(
-            transform.localScale.x * 1,  // Nhân theo trục X
-            transform.localScale.y * 10,  // Nhân theo trục Y
-            transform.localScale.z * 1   // Nhân theo trục Z
-        );
+        if (string.IsNullOrEmpty(name))
+            name = $"CropTile_{transform.position.x}_{transform.position.z}";
 
-        this.cropData = cropData;
-    }
-
-
-
-    public bool IsSown()
-    {
-        return state == TileFieldState.Sown;
+        placedItemData = new PlacedItemData("CropField", data.itemName, transform.position, transform.rotation, name, crop.isFullyGrown, crop.timeToGrowUp, state);
     }
 
     public void Water()
     {
         crop = GetComponentInChildren<Crop>();
         state = TileFieldState.Watered;
-        crop.ScaleUp();
-        tileRenderer.gameObject.LeanColor(Color.white * 0.3f, 1).setEase(LeanTweenType.easeOutBack);
+
+        if (crop != null)
+            crop.ScaleUp();
+
+        tileRenderer.gameObject.LeanColor(Color.white * 0.3f, 1f).setEase(LeanTweenType.easeOutBack);
     }
 
     public void Harvest()
     {
         if (crop == null || !crop.IsFullyGrown())
         {
-            Debug.Log("Chua the thu hoach");
-            return; // Ngăn thu hoạch khi cây chưa phát triển đủ
+            Debug.Log("Chưa thể thu hoạch");
+            return;
         }
+
         InitializeSettings();
         state = TileFieldState.Empty;
-        crop.ScaleDown(); //Chỉ thu hoạch khi cây đã lớn đủ
-        tileRenderer.gameObject.LeanColor(Color.white, 1).setEase(LeanTweenType.easeOutBack);
-        onCropHarvested?.Invoke(cropData.itemName, dropAmount);//InventoryManager
-        Debug.Log("Harvest thanh cong");
+
+        crop.ScaleDown();
+        tileRenderer.gameObject.LeanColor(Color.white, 1f).setEase(LeanTweenType.easeOutBack);
+
+        EventBus.Publish(new ItemPickedUp(cropData.itemName, dropAmount));
+        Debug.Log("Thu hoạch thành công");
+
+        onCropHarvested?.Invoke(cropData.itemName, dropAmount);
     }
 
-    public bool IsReadyToHarvest()
+    public void StartInfestation()
     {
-        return crop != null && crop.IsFullyGrown();
+        if (cropData == null) return;
+
+        if (infestationCoroutine != null)
+            StopCoroutine(infestationCoroutine);
+
+        crop = GetComponentInChildren<Crop>();
+
+        if (crop != null)
+        {
+            Renderer renderer = crop.GetComponentInChildren<Renderer>();
+            if (renderer != null)
+            {
+                originalMaterial = renderer.material;
+                renderer.material = infestedMaterial;
+            }
+        }
+
+        infestationCoroutine = StartCoroutine(DamagePlantOverTime());
     }
 
+    private IEnumerator DamagePlantOverTime()
+    {
+        while (cropData.plantHealth > 0f)
+        {
+            cropData.plantHealth -= 1f;
+            Debug.Log($"{gameObject.name} - plantHealth: {cropData.plantHealth}");
+
+            if (cropData.plantHealth <= 0f)
+            {
+                Debug.Log($"{gameObject.name} - Cây đã chết vì sâu bệnh!");
+
+                if (crop != null)
+                {
+                    Destroy(crop.gameObject);
+                    crop = null;
+                }
+
+                state = TileFieldState.Empty;
+                cropData = null;
+                yield break;
+            }
+
+            yield return new WaitForSeconds(1f);
+        }
+    }
+
+    public void CureInfestation()
+    {
+        if (infestationCoroutine != null)
+            StopCoroutine(infestationCoroutine);
+
+        crop = GetComponentInChildren<Crop>();
+
+        if (crop != null && originalMaterial != null)
+        {
+            Renderer renderer = crop.GetComponentInChildren<Renderer>();
+            if (renderer != null)
+                renderer.material = originalMaterial;
+        }
+
+        state = TileFieldState.Watered;
+        Debug.Log($"{gameObject.name} đã được chữa khỏi bệnh!");
+    }
+
+    public void UpdatePlacedItemData()
+    {
+        placedItemData = new PlacedItemData(
+            "CropField",
+            cropData.itemName,
+            transform.position,
+            transform.rotation,
+            name,
+            crop != null && crop.isFullyGrown,
+            crop != null ? crop.timeToGrowUp : 0f,
+            state
+        );
+    }
+
+    public PlacedItemData GetPlacedItemData() => placedItemData;
+
+    public void UpdateGrowthState()
+    {
+        if (crop == null || cropData == null) return;
+
+        crop.isFullyGrown = true;
+        state = TileFieldState.Ripened;
+        UpdatePlacedItemData();
+    }
+
+    [Serializable]
+    public class CropTileSaveData
+    {
+        public Vector3 position;
+        public Quaternion rotation;
+        public string itemName;
+        public float timeToGrowUp;
+        public bool isFullyGrown;
+        public TileFieldState state;
+    }
 }

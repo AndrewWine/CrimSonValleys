@@ -29,17 +29,22 @@ public class QuestManager : MonoBehaviour
     // Kiểm tra xem nhiệm vụ có thể hoàn thành hay không
     public bool CanCompleteQuest(Quest quest)
     {
-        // Kiểm tra tất cả các vật phẩm yêu cầu
-        foreach (var requiredItem in quest.GetRequirements())
+        using (List<QuestRequirement>.Enumerator enumerator = quest.GetRequirements().GetEnumerator())
         {
-            if (!requiredItem.IsCompleted())
+            while (enumerator.MoveNext())
             {
-                //Debug.LogWarning($"Chưa đủ {requiredItem.requiredItemName} để hoàn thành nhiệm vụ.");
-                NotifyFailMessage?.Invoke();
-                return false;  // Nếu có vật phẩm nào chưa hoàn thành, không thể hoàn thành quest
+                if (!enumerator.Current.IsCompleted())
+                {
+                    Action notifyFailMessage = QuestManager.NotifyFailMessage;
+                    if (notifyFailMessage != null)
+                    {
+                        notifyFailMessage();
+                    }
+                    return false;
+                }
             }
         }
-        return true;  // Nếu tất cả vật phẩm yêu cầu đã hoàn thành
+        return true;
     }
 
     // Hoàn thành nhiệm vụ
@@ -53,6 +58,7 @@ public class QuestManager : MonoBehaviour
             {
                 if (CanCompleteQuest(quest)) // Kiểm tra nếu tất cả vật phẩm yêu cầu đã đủ
                 {
+                    quest.GiveRewards();
                     quest.CompleteQuest(); // Hoàn thành nhiệm vụ
                     activeQuests.Remove(quest); // Xóa quest khỏi danh sách activeQuests
                     //Debug.Log($"Nhiệm vụ '{quest.questName}' đã hoàn thành tại NPC '{giverID}'.");
@@ -94,6 +100,42 @@ public class QuestManager : MonoBehaviour
             {
                 requiredItem.AddProgress(amount); // Cập nhật tiến độ của yêu cầu vật phẩm
                 Debug.Log($"Cập nhật tiến độ vật phẩm {itemName} cho nhiệm vụ {questName}.");
+            }
+        }
+    }
+
+
+    public void SaveQuests()
+    {
+        WorldManager.instance.worldData.activeQuests.Clear();
+        WorldManager.instance.worldData.completedQuestNames.Clear();
+        foreach (Quest quest in this.activeQuests)
+        {
+            SavedQuestData savedQuestData = new SavedQuestData
+            {
+                questName = quest.questName,
+                giverID = quest.questGiverID,
+                progress = new List<RequirementProgress>()
+            };
+            foreach (QuestRequirement questRequirement in quest.requirements)
+            {
+                savedQuestData.progress.Add(new RequirementProgress
+                {
+                    itemName = questRequirement.requiredItemName,
+                    current = questRequirement.currentAmount
+                });
+            }
+            WorldManager.instance.worldData.activeQuests.Add(savedQuestData);
+        }
+        QuestGiver[] array = this.allQuestGivers;
+        for (int i = 0; i < array.Length; i++)
+        {
+            foreach (Quest quest2 in array[i].availableQuests)
+            {
+                if (quest2.isCompleted && !WorldManager.instance.worldData.completedQuestNames.Contains(quest2.questName))
+                {
+                    WorldManager.instance.worldData.completedQuestNames.Add(quest2.questName);
+                }
             }
         }
     }

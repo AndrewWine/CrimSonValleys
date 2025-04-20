@@ -1,120 +1,189 @@
 ﻿using System;
-
 using UnityEngine;
 
 public class CheckGameObject : MonoBehaviour
 {
+
+
+    public CropField GetCurrentCropField() => currentCropField;
+
+    public OreRock GetCurrentOreRock() => ore;
+
     [Header("Actions")]
     public static Action<bool> EnableSowBTTN;
     public static Action<bool> EnableWaterBTTN;
     public static Action<bool> EnableHarvestBTTN;
     public static Action<bool> EnableSleepBTTN;
+    public static Action<bool> removeWormsBTTN;
     public static Action<bool> UnlockCropField;
     public static Action<CropField> cropFieldDetected;
     public static Action<bool> changeCameraAngel;
 
     [Header("Elements")]
-    private CropField currentCropField; // Chỉ lưu một CropField duy nhất
-    private OreRock ore;
+    public CropField currentCropField;
     private LineRenderer lineRenderer;
     private PlayerBlackBoard blackBoard;
     public bool buildingGameObject;
     public bool cropTile;
-
+    public Transform player;
+    private CharacterController controller;
     public GameObject currentGameObject;
+    private Tree tree;
+    private OreRock ore;
+    private void Awake()
+    {
+        controller = player.GetComponent<CharacterController>();
+    }
+
     private void Start()
     {
-        // Tạo LineRenderer nếu chưa có
         lineRenderer = GetComponent<LineRenderer>();
-        if (lineRenderer == null)
-        {
-            lineRenderer = gameObject.AddComponent<LineRenderer>();
-        }
         blackBoard = GetComponentInParent<PlayerBlackBoard>();
         SetupLineRenderer();
+    }
+
+    private void OnEnable()
+    {
+        CuttingAbility.causeDamage += DoCuttingTree;
+        MiningAbility.doDamageToOre += DoMining;
+    }
+
+    private void OnDisable()
+    {
+        CuttingAbility.causeDamage -= DoCuttingTree;
+        MiningAbility.doDamageToOre -= DoMining;
+    }
+
+    private void LateUpdate()
+    {
+        if (controller != null)
+        {
+            Vector3 velocity = controller.velocity;
+            velocity.y = 0f;
+            if (velocity.magnitude > 0.1f)
+            {
+                Vector3 normalized = velocity.normalized;
+                transform.position = player.position + normalized;
+                return;
+            }
+            transform.position = player.position;
+        }
     }
 
     private void OnTriggerEnter(Collider other)
     {
         if (other.CompareTag("Croptile"))
         {
-            CropField cropField = other.GetComponent<CropField>();
-
-            if (cropField != null)
+            CropField component = other.GetComponent<CropField>();
+            if (component != null)
             {
                 if (currentCropField == null)
                 {
-                    currentCropField = cropField;
+                    currentCropField = component;
                     currentGameObject = currentCropField.gameObject;
                     cropTile = true;
-
-                    //UnlockCropField?.Invoke(true);
+                    UnlockCropField?.Invoke(true);
                 }
-
-                UpdateButtons(cropField.state, true);
-                DrawOutline(cropField); // Vẽ outline khi bật UIButton
+                lineRenderer.enabled = true;
+                UpdateButtons(component.state, true);
             }
-            cropFieldDetected?.Invoke(cropField);//HoeAbility
-           
-         
-
+            cropFieldDetected?.Invoke(component);
+            return;
         }
 
-        else if(other.CompareTag("Ore"))
+        if (other.CompareTag("Ore"))
         {
-            OreRock ore = other.GetComponent<OreRock>();
+            ore = other.GetComponent<OreRock>();
+            blackBoard.isOre = true;
+            return;
         }
 
-    
+        if (other.CompareTag("Tree"))
+        {
+            tree = other.GetComponent<Tree>();
+            blackBoard.isTree = true;
+            return;
+        }
 
-        else if(other.CompareTag("Indoor"))
+        if (other.CompareTag("Indoor"))
         {
             changeCameraAngel?.Invoke(true);
             EnableSleepBTTN?.Invoke(true);
-
+            return;
         }
 
-        else if( other.CompareTag("Cage") || other.CompareTag("Decore"))
+        if (other.CompareTag("Cage") || other.CompareTag("Decore"))
         {
             buildingGameObject = true;
             currentGameObject = other.gameObject;
+            return;
+        }
 
+        if (other.CompareTag("FarmArea"))
+        {
+            blackBoard.isFarmArea = true;
         }
     }
-
-
 
     private void OnTriggerExit(Collider other)
     {
         if (other.CompareTag("Croptile"))
         {
-            CropField cropField = other.GetComponent<CropField>();
-            if (cropField == currentCropField)
+            if (other.GetComponent<CropField>() == currentCropField)
             {
                 currentCropField = null;
-                //UnlockCropField?.Invoke(false);
                 UpdateButtons(TileFieldState.Empty, false);
-
-
-                lineRenderer.enabled = false; // Tắt outline khi rời đi
+                lineRenderer.enabled = false;
             }
             cropTile = false;
             currentGameObject = null;
+            return;
         }
-    
 
-        else if (other.CompareTag("Indoor"))
+        if (other.CompareTag("Indoor"))
         {
             changeCameraAngel?.Invoke(false);
             EnableSleepBTTN?.Invoke(false);
-
+            return;
         }
 
-        else if ( other.CompareTag("Cage") || other.CompareTag("Decore"))
+        if (other.CompareTag("Cage") || other.CompareTag("Decore"))
         {
             buildingGameObject = false;
             currentGameObject = null;
+            return;
+        }
 
+        if (other.CompareTag("FarmArea"))
+        {
+            blackBoard.isFarmArea = false;
+            return;
+        }
+
+        if (other.CompareTag("Tree"))
+        {
+            other.GetComponent<Tree>();
+            blackBoard.isTree = false;
+            return;
+        }
+
+        if (other.CompareTag("Ore"))
+        {
+            other.GetComponent<OreRock>();
+            blackBoard.isOre = false;
+        }
+    }
+
+    private void DoCuttingTree()
+    {
+        tree.TakeDamage(blackBoard.Axedamage);
+    }
+
+    private void DoMining()
+    {
+        if (ore != null)
+        {
+            ore.TakeDamage(blackBoard.Pickaxedamage);
         }
     }
 
@@ -123,58 +192,18 @@ public class CheckGameObject : MonoBehaviour
         EnableSowBTTN?.Invoke(state == TileFieldState.Empty && enable);
         EnableWaterBTTN?.Invoke(state == TileFieldState.Sown && enable);
         EnableHarvestBTTN?.Invoke(state == TileFieldState.Ripened && enable);
-
-        lineRenderer.enabled = enable; // Bật LineRenderer khi có UI Button bật
+        removeWormsBTTN?.Invoke(state == TileFieldState.Infested && enable);
+        lineRenderer.enabled = enable;
     }
 
     private void SetupLineRenderer()
     {
-        lineRenderer.positionCount = 8; // 4 góc + 4 góc nối nhau
+        lineRenderer.positionCount = 8;
         lineRenderer.startWidth = 0.05f;
         lineRenderer.endWidth = 0.05f;
         lineRenderer.loop = true;
-
-        lineRenderer.material = new Material(Shader.Find("Unlit/Color"));
         lineRenderer.material.color = Color.green;
-        lineRenderer.enabled = false;
-    }
-
-    private void DrawOutline(CropField cropField)
-    {
-        if (cropField == null || lineRenderer == null) return;
-
-        Bounds bounds = cropField.GetComponent<Collider>().bounds;
-        Vector3 min = bounds.min;
-        Vector3 max = bounds.max;
-
-        Vector3[] corners = new Vector3[8]
-        {
-            new Vector3(min.x, max.y, min.z),
-            new Vector3(max.x, max.y, min.z),
-            new Vector3(max.x, max.y, max.z),
-            new Vector3(min.x, max.y, max.z),
-            new Vector3(min.x, min.y, min.z),
-            new Vector3(max.x, min.y, min.z),
-            new Vector3(max.x, min.y, max.z),
-            new Vector3(min.x, min.y, max.z)
-        };
-
-        lineRenderer.positionCount = 5;
-        lineRenderer.SetPositions(new Vector3[]
-        {
-            corners[0], corners[1], corners[2], corners[3], corners[0]
-        });
-
         lineRenderer.enabled = true;
     }
 
-    public CropField GetCurrentCropField()
-    {
-        return currentCropField;
-    }
-
-    public OreRock GetCurrentOreRock()
-    {
-        return ore;
-    }
 }

@@ -22,6 +22,7 @@ public class AnimationTriggerCrop : MonoBehaviour
         if (playerStateMachine != null && playerStateMachine.CurrentState != null)
         {
             playerStateMachine.CurrentState.AnimationFinishTrigger();
+            return;
         }
         else
         {
@@ -34,6 +35,7 @@ public class AnimationTriggerCrop : MonoBehaviour
         Debug.Log("Sự kiện thu hoạch được kích hoạt!");
 
         onHarvestTriggered?.Invoke();//cropfield
+        return;
     }
 
     public void Mining()

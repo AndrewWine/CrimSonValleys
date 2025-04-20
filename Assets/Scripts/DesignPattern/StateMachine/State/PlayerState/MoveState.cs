@@ -1,46 +1,65 @@
-﻿using System.Collections;
-using System.Collections.Generic;
+﻿using System;
 using UnityEngine;
 
+// Token: 0x02000065 RID: 101
 public class MoveState : PlayerState
 {
-    [Header(" Elements ")]
+    [Header("Elements")]
     [SerializeField] private MobileJoystick joystick;
-    private CharacterController characterController;
 
-    private float fallVelocity = 0f;
+    private CharacterController characterController;
+    private float fallVelocity;
     private float gravity = -9.81f;
 
-    void Start()
+    private void Start()
     {
-        characterController = GetComponentInParent<CharacterController>();
+        characterController = base.GetComponentInParent<CharacterController>();
     }
 
     private void ManageMovement()
     {
-        Vector3 moveVector = joystick.GetMoveVector();
-        moveVector.z = moveVector.y;
-        moveVector.y = 0; // Giữ nguyên y để xử lý trọng lực sau
+        // Get movement vector from joystick
+        Vector3 vector = joystick.GetMoveVector();
+        vector.z = vector.y;
+        vector.y = 0f;
 
-        Vector3 movement = moveVector.normalized * blackboard.speed * Time.fixedDeltaTime;
+        Vector3 moveVector = Vector3.zero;
+        float axis = Input.GetAxis("Horizontal");
+        float axis2 = Input.GetAxis("Vertical");
 
-        // Áp dụng trọng lực
+        Transform transform = Camera.main.transform;
+        Vector3 forward = transform.forward;
+        Vector3 right = transform.right;
+
+        // Normalize forward and right to remove any y-component
+        forward.y = 0f;
+        right.y = 0f;
+        forward.Normalize();
+        right.Normalize();
+
+        // Calculate move vector
+        moveVector = (forward * axis2 + right * axis).normalized;
+
+        // Calculate motion
+        Vector3 motion = moveVector.normalized * blackboard.speed * Time.fixedDeltaTime;
+
+        // Apply gravity when not grounded
         if (!characterController.isGrounded)
         {
-            fallVelocity += gravity * Time.fixedDeltaTime; // Tăng tốc độ rơi
+            fallVelocity += gravity * Time.fixedDeltaTime;
         }
         else
         {
-            fallVelocity = -2f; // Reset nhẹ để giữ nhân vật dính nền
+            fallVelocity = -2f;  // Reset fall velocity when grounded
         }
 
-        movement.y = fallVelocity * Time.fixedDeltaTime; // Cập nhật Y
+        motion.y = fallVelocity * Time.fixedDeltaTime;
 
-        // Di chuyển nhân vật
-        characterController.Move(movement);
+        // Move the character
+        characterController.Move(motion);
 
-        // Cập nhật animation
-        ManageAnimations(movement);
+        // Manage animations based on movement
+        ManageAnimations(moveVector);
     }
 
     public override void Enter()
@@ -55,26 +74,13 @@ public class MoveState : PlayerState
 
     private void ManageAnimations(Vector3 moveVector)
     {
-        if (moveVector.magnitude > 0.1f)
-        {
-            blackboard.animator.SetFloat("moveSpeed", moveVector.magnitude * blackboard.speed);
+        // Set move speed animation parameter
+        blackboard.animator.SetFloat("moveSpeed", 1f);
 
-            // Đảm bảo nhân vật chỉ xoay theo trục Y (không bị nghiêng)
-            Vector3 direction = new Vector3(moveVector.x, 0, moveVector.z).normalized;
-            blackboard.animator.transform.rotation = Quaternion.LookRotation(direction);
+        Vector3 normalized = new Vector3(moveVector.x, 0f, moveVector.z).normalized;
 
-            // Chạy animation tương ứng
-            if (moveVector.magnitude * blackboard.speed >= blackboard.runThreshold)
-            {
-                blackboard.speed = 5f;
-                blackboard.animator.Play("Run");
-            }
-            else
-            {
-                blackboard.speed = 3f;
-                blackboard.animator.Play("Walking");
-            }
-        }
+        // Rotate character based on move direction
+        blackboard.animator.transform.rotation = Quaternion.LookRotation(normalized);
     }
 
     public override void PhysicUpdate()
@@ -87,10 +93,26 @@ public class MoveState : PlayerState
     {
         base.LogicUpdate();
 
-        // Nếu người chơi không điều khiển joystick => chuyển sang trạng thái Idle
-        if (joystick.GetMoveVector().magnitude <= 0.1f)
+        bool isMoving = joystick.GetMoveVector().magnitude > 0.1f;
+        bool isIdle = Input.GetAxisRaw("Horizontal") == 0f && Input.GetAxisRaw("Vertical") == 0f;
+
+        // Transition to idle state if no input or joystick movement
+        if (!isMoving && isIdle)
         {
             stateMachine.ChangeState(blackboard.idlePlayer);
+            return;
         }
+
+        // Handle running state with LeftShift key
+        if (Input.GetKey(KeyCode.LeftShift))
+        {
+            blackboard.speed = 5f;
+            blackboard.animator.Play("Run");
+            return;
+        }
+
+        // Handle walking state
+        blackboard.speed = 1.7f;
+        blackboard.animator.Play("Walk");
     }
 }

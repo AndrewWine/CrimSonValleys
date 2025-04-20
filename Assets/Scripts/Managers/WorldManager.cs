@@ -1,17 +1,23 @@
-﻿using System;
-using System.Collections;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.IO;
+using System.Linq;
+using System;
 using UnityEngine;
+using System.Collections;
+
+
 
 public class WorldManager : MonoBehaviour
 {
     public static WorldManager instance; // Thêm biến instance
     [SerializeField] private DayNightCycle dayNightCycle;
-
+    [SerializeField] private QuestManager questManager;
     private string dataPath;
     public WorldData worldData;
-    
+    [SerializeField] private Transform playerObject;
+    [SerializeField] private PlayerBlackBoard blackBoard;
+    public List<CropTile> cropTiles;  // Khai báo danh sách CropTile
+
     private void Awake()
     {
         if (instance == null)
@@ -47,7 +53,7 @@ public class WorldManager : MonoBehaviour
         EventBus.Subscribe<ItemDestroyedEvent>(OnItemDestroyed);
         EventBus.Subscribe<BuildingPlacedEvent>(OnBuildingPlaced);
         EventBus.Subscribe<TreeDestroyedEvent>(OnTreeDestroyed);
-        EventBus.Subscribe<BuildingDestroyedEvent>(OnBuildingDestroyed); 
+        EventBus.Subscribe<BuildingDestroyedEvent>(OnBuildingDestroyed);
 
 
     }
@@ -58,7 +64,7 @@ public class WorldManager : MonoBehaviour
         EventBus.Unsubscribe<ItemDestroyedEvent>(OnItemDestroyed);
         EventBus.Unsubscribe<BuildingPlacedEvent>(OnBuildingPlaced);
         EventBus.Unsubscribe<TreeDestroyedEvent>(OnTreeDestroyed);
-        EventBus.Unsubscribe<BuildingDestroyedEvent>(OnBuildingDestroyed); 
+        EventBus.Unsubscribe<BuildingDestroyedEvent>(OnBuildingDestroyed);
 
     }
 
@@ -68,190 +74,161 @@ public class WorldManager : MonoBehaviour
     {
         if (worldData == null)
             worldData = new WorldData();
+
+        // ————————— Thời gian + player —————————
         worldData._timeOfDay = dayNightCycle.timeOfDay;
         worldData._dayNumber = dayNightCycle.dayNumber;
         worldData._yearNumber = dayNightCycle.yearNumber;
         worldData._yearLength = dayNightCycle.yearLength;
         worldData.gameDateTime = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
-        // Tạo danh sách mới và xóa danh sách cũ trong worldData
-        List<PlacedItemData> newPlacedItems = new List<PlacedItemData>();
-        List<PlacedBuildingData> newPlacedBuildings = new List<PlacedBuildingData>();
+        worldData.playerPosition = playerObject.position;
+        worldData.coins = CashManager.instance.GetCoins();
+        worldData.stamina = blackBoard.stamina;
+        worldData.tileGridPositions = new List<Vector3Int>();
+
+        // —————— Reset danh sách rồi fill lại ——————
+        var newItems = new List<PlacedItemData>();
+        var newBuildings = new List<PlacedBuildingData>();
 
         worldData.placedItems.Clear();
         worldData.placedBuildings.Clear();
 
-        // Lưu tất cả các Item (bao gồm cả Tree) trong scene
+        // 1) Lưu tất cả cây qua CropTile
+        // Duyệt qua tất cả các CropTile trong game và lưu vị trí của chúng
+        foreach (var cropTile in cropTiles) // cropTiles là danh sách các CropTile bạn đang sử dụng
+        {
+            if (cropTile != null)
+            {
+                // Lưu vị trí tileGridPosition của CropTile
+                worldData.tileGridPositions.Add(cropTile.tileGridPosition);
+            }
+        }
+
+        // 2) Lưu items khác (không phải crop)
         foreach (var item in FindObjectsOfType<Item>())
         {
-            if (item == null || item.itemData == null || string.IsNullOrEmpty(item.itemData.itemName))
-            {
-                Debug.LogWarning(" Bỏ qua item không có ItemData hoặc itemName trống!");
+            if (item is Crop)
                 continue;
-            }
 
-            newPlacedItems.Add(new PlacedItemData(
-                item.itemData.itemName,  // Lấy itemName từ itemData
+            if (item.itemData == null || string.IsNullOrEmpty(item.itemData.itemName))
+                continue;
+
+            newItems.Add(new PlacedItemData(
+                item.itemData.itemName,
                 item.transform.position,
                 item.transform.rotation
             ));
         }
 
-        // Nếu bạn cần lưu thêm thông tin riêng của Tree, bạn có thể xử lý ở đây.
-        // Nhưng nếu Tree chỉ là 1 Item, vòng lặp trên đã lưu dữ liệu của chúng.
-
-        // Lưu Building từ BuildingSystem
-        BuildingSystem buildingSystem = FindObjectOfType<BuildingSystem>();
-        if (buildingSystem != null)
+        // 3) Lưu buildings như cũ
+        var bs = FindObjectOfType<BuildingSystem>();
+        if (bs != null)
         {
-            var placedBuildings = buildingSystem.GetPlacedBuildings();
-            if (placedBuildings.Count == 0)
+            foreach (var go in bs.GetPlacedBuildings())
             {
-                Debug.LogWarning(" Không có công trình nào để lưu!");
-            }
-            else
-            {
-                foreach (var building in placedBuildings)
-                {
-                    if (building == null) continue;
-                    PlacedBuilding placedBuilding = building.GetComponent<PlacedBuilding>();
-                    if (placedBuilding == null || placedBuilding.buildingData == null) continue;
-                    // Chỉ lưu nếu building không phải là "Player"
-                    if (placedBuilding.buildingData.buildingName == "Player") continue;
+                var pb = go.GetComponent<PlacedBuilding>();
+                if (pb == null || pb.buildingData == null) continue;
+                if (pb.buildingData.buildingName == "Player") continue;
 
-                    newPlacedBuildings.Add(new PlacedBuildingData(
-                        placedBuilding.buildingData.buildingName,
-                        building.transform.position,
-                        building.transform.rotation
-                    ));
-                }
+                newBuildings.Add(new PlacedBuildingData(
+                    pb.buildingData.buildingName,
+                    go.transform.position,
+                    go.transform.rotation
+                ));
             }
         }
-        else
-        {
-            Debug.Log(" Không tìm thấy BuildingSystem, có thể gây mất dữ liệu!");
-        }
 
-        // Cập nhật worldData
-        worldData.placedItems = newPlacedItems;
-        worldData.placedBuildings = newPlacedBuildings;
+        worldData.placedItems = newItems;
+        worldData.placedBuildings = newBuildings;
 
-        string json = JsonUtility.ToJson(worldData, true);
-        File.WriteAllText(dataPath, json);
-
-        Debug.Log(" World Saved!");
+        File.WriteAllText(dataPath, JsonUtility.ToJson(worldData, true));
+        questManager.SaveQuests();
+        Debug.Log("World Saved!");
     }
-
-
 
     public IEnumerator LoadWorldCoroutine()
     {
-        Debug.Log(" Bắt đầu LoadWorld...");
-
+        // 1) Đảm bảo worldData hợp lệ
         if (!File.Exists(dataPath))
         {
-            Debug.LogWarning(" Không tìm thấy file worlddata.json, tạo mới!");
             worldData = new WorldData();
+            CashManager.instance.SetCoins(20);
             SaveWorld();
             yield break;
         }
 
-        string data = File.ReadAllText(dataPath);
-        if (string.IsNullOrEmpty(data))
-        {
-            Debug.LogError(" File worlddata.json rỗng! Reset dữ liệu.");
-            worldData = new WorldData();
-            SaveWorld();
-            yield break;
-        }
+        var text = File.ReadAllText(dataPath);
+        worldData = string.IsNullOrEmpty(text)
+            ? new WorldData()
+            : JsonUtility.FromJson<WorldData>(text) ?? new WorldData();
 
-        worldData = JsonUtility.FromJson<WorldData>(data);
-        if (worldData == null)
-        {
-            Debug.LogError(" Lỗi khi đọc JSON, tạo lại worldData.");
-            worldData = new WorldData();
-            SaveWorld();
-            yield break;
-        }
+        // 2) Xóa toàn bộ Item & Building hiện có
+        foreach (var it in FindObjectsOfType<Item>())
+            Destroy(it.gameObject);
 
-        // Xóa tất cả Item hiện có
-        Item[] items = FindObjectsOfType<Item>();
-        Debug.Log($" Số lượng Item trước khi xóa: {items.Length}");
-        for (int i = items.Length - 1; i >= 0; i--)
-        {
-            Destroy(items[i].gameObject);
-        }
+        var bs = FindObjectOfType<BuildingSystem>();
+        bs?.ClearPlacedBuildings();
 
-        // Xóa tất cả Building hiện có
-        BuildingSystem buildingSystem = FindObjectOfType<BuildingSystem>();
-        if (buildingSystem != null)
-        {
-            buildingSystem.ClearPlacedBuildings();
-        }
-        //else
-      //  {
-        //  Debug.Log(" Không tìm thấy BuildingSystem!");
-       // }
-
-        // Đợi đến cuối frame để chắc chắn các đối tượng cũ đã bị xóa
         yield return new WaitForEndOfFrame();
 
-        // Kiểm tra lại số lượng Item sau khi xóa
-        items = FindObjectsOfType<Item>();
-        Debug.Log($" Số lượng Item sau khi xóa: {items.Length}");
-
-        // Load lại Item từ dữ liệu save
-        foreach (var itemData in worldData.placedItems)
+        // 3) Load lại cây vào đúng Croptile
+        var allTiles = FindObjectsOfType<CropTile>();
+        foreach (var pd in worldData.placedItems)
         {
-            if (string.IsNullOrEmpty(itemData.itemName))
-            {
-                Debug.LogWarning(" Bỏ qua item không có tên!");
-                continue;
-            }
+            // tìm Tile gần đúng vị trí
+            var tile = allTiles.FirstOrDefault(t =>
+                Vector3.Distance(t.transform.position, pd.position) < 0.5f);
 
-            ItemData itemPrefab = DataManagers.instance.GetItemDataByName(itemData.itemName);
-            if (itemPrefab != null && itemPrefab.itemPrefab != null)
+            if (tile != null)
             {
-                GameObject newItemObj = Instantiate(itemPrefab.itemPrefab.gameObject, itemData.position, itemData.rotation);
-                Debug.Log($" Đã tạo {itemData.itemName} tại {itemData.position}");
+                // sow và restore state
+                var itemData = DataManagers.instance.GetItemDataByName(pd.itemName);
+                tile.Sow(itemData);
+                tile.state = pd.tileFieldState;
+
+                var c = tile.GetComponentInChildren<Crop>();
+                c.isFullyGrown = pd.isFullyGrown;
+                c.timeToGrowUp = pd.timeToGrowUp;
             }
             else
             {
-                Debug.LogError($" Không tìm thấy prefab cho {itemData.itemName}");
+                // non-crop: instantiate bình thường
+                var itemData = DataManagers.instance.GetItemDataByName(pd.itemName);
+                if (itemData?.itemPrefab != null)
+                    Instantiate(itemData.itemPrefab.gameObject, pd.position, pd.rotation);
             }
         }
 
-        // Load lại Building từ BuildingSystem
-        if (buildingSystem != null)
+        // 4) Load buildings
+        if (bs != null)
         {
-            foreach (var buildingData in worldData.placedBuildings)
+            foreach (var bd in worldData.placedBuildings)
             {
-                if (buildingData.buildingName == "Player") continue;
-
-                BuildingData prefab = DataManagers.instance.GetBuildingDataByName(buildingData.buildingName);
-                if (prefab != null && prefab.buildingPrefab != null)
-                {
-                    buildingSystem.LoadBuilding(prefab.buildingPrefab, buildingData.position, buildingData.rotation);
-                }
-                else
-                {
-                    Debug.LogError($" Không tìm thấy prefab cho {buildingData.buildingName}");
-                }
+                if (bd.buildingName == "Player") continue;
+                var bData = DataManagers.instance.GetBuildingDataByName(bd.buildingName);
+                if (bData?.buildingPrefab != null)
+                    bs.LoadBuilding(bData.buildingPrefab, bd.position, bd.rotation);
             }
         }
 
-        // Xóa các cây đã bị phá hủy
+        // 5) Xóa cây đã chết, restore time & player
         foreach (var tree in FindObjectsOfType<Tree>())
-        {
-            foreach (var destroyedTree in worldData.destroyedTrees)
-            {
-                if (Vector3.Distance(tree.transform.position, destroyedTree.position) < 0.1f)
-                {
-                    Destroy(tree.gameObject);
-                }
-            }
-        }
+            if (worldData.destroyedTrees.Any(d =>
+                Vector3.Distance(d.position, tree.transform.position) < 0.1f))
+                Destroy(tree.gameObject);
 
-        Debug.Log(" LoadWorld hoàn tất!");
+        dayNightCycle.timeOfDay = worldData._timeOfDay;
+        dayNightCycle.dayNumber = worldData._dayNumber;
+        dayNightCycle.yearNumber = worldData._yearNumber;
+        dayNightCycle.yearLength = worldData._yearLength;
+        dayNightCycle.AdjustSun();
+        dayNightCycle.AdjustSkybox();
+
+        playerObject.position = worldData.playerPosition;
+        CashManager.instance.SetCoins(worldData.coins);
+        blackBoard.stamina = worldData.stamina;
+
+        Debug.Log("LoadWorld hoàn tất!");
     }
 
 
@@ -261,7 +238,7 @@ public class WorldManager : MonoBehaviour
         if (worldData == null)
             worldData = new WorldData();
 
-        // Kiểm tra xem `evt.building` có `buildingData` hay không
+        // Kiểm tra xem evt.building có buildingData hay không
         if (evt.building == null || evt.building.buildingData == null)
         {
             Debug.LogWarning(" Không tìm thấy buildingData, bỏ qua xóa.");
@@ -318,7 +295,7 @@ public class WorldManager : MonoBehaviour
         SaveWorld(); // GỌI NGAY KHI ĐẶT BUILDING!
     }
 
-    
+
 
     private void OnApplicationQuit()
     {

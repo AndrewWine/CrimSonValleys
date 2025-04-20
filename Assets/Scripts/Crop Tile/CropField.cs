@@ -1,219 +1,269 @@
 ﻿using System;
 using System.Collections;
 using System.Collections.Generic;
-using Unity.VisualScripting;
 using UnityEngine;
 
 public class CropField : Item
 {
-    [Header(" Elements ")]
-    [SerializeField] private Transform tilesParent;
-    private List<CropTile> cropTiles = new List<CropTile>();
-    private List<GameObject> itemPlaced = new List<GameObject>(); //  Thêm danh sách công trình đã đặt
-
-
-    [Header("Settings")]
-    [SerializeField] private ItemData cropData;
-    public TileFieldState state;
-    private int tilesHarvested;
-
-
-    [Header("Actions")]
-    public static Action onFullySown;
+    // Variables
+    public static List<CropField> allCropFields = new List<CropField>();
     public static Action<CropField> onFullyWatered;
     public static Action<CropField> onFullyHarvested;
-
-
-
-    void Start()
+    public string fieldID;
+    public TileFieldState state;
+    public ItemData cropData;
+    public List<CropTile> cropTiles = new List<CropTile>();
+    public List<GameObject> itemPlaced = new List<GameObject>();
+    public Transform tilesParent;
+    private int tilesHarvested;
+    private void Awake()
     {
-        state = TileFieldState.Empty;
-        StoreTiles();
-        HarvestAbillity.Harvesting += Harvest;
-        Crop.realdyToHarvest += NotifyRipened;
+        if (string.IsNullOrEmpty(this.fieldID))
+        {
+            this.fieldID = Guid.NewGuid().ToString();
+        }
+    }
 
-        // Lắng nghe sự kiện thu hoạch từ AnimationTriggerCrop
-        AnimationTriggerCrop.onHarvestTriggered += OnHarvestTriggered;
+    private void Start()
+    {
+        this.state = TileFieldState.Empty;
+        this.StoreTiles();
+        HarvestAbillity.Harvesting = (Action<Transform>)Delegate.Combine(HarvestAbillity.Harvesting, new Action<Transform>(this.Harvest));
+        Crop.realdyToHarvest = (Action<CropTile>)Delegate.Combine(Crop.realdyToHarvest, new Action<CropTile>(this.OnCropTileRipened));
+        AnimationTriggerCrop.onHarvestTriggered = (Action)Delegate.Combine(AnimationTriggerCrop.onHarvestTriggered, new Action(this.OnHarvestTriggered));
+    }
+
+    private void OnEnable()
+    {
+        if (!CropField.allCropFields.Contains(this))
+        {
+            CropField.allCropFields.Add(this);
+        }
     }
 
     private void OnDestroy()
     {
-        HarvestAbillity.Harvesting -= Harvest;
-        Crop.realdyToHarvest -= NotifyRipened;
-        AnimationTriggerCrop.onHarvestTriggered -= OnHarvestTriggered;
+        HarvestAbillity.Harvesting = (Action<Transform>)Delegate.Remove(HarvestAbillity.Harvesting, new Action<Transform>(this.Harvest));
+        Crop.realdyToHarvest = (Action<CropTile>)Delegate.Remove(Crop.realdyToHarvest, new Action<CropTile>(this.OnCropTileRipened));
+        AnimationTriggerCrop.onHarvestTriggered = (Action)Delegate.Remove(AnimationTriggerCrop.onHarvestTriggered, new Action(this.OnHarvestTriggered));
+        if (CropField.allCropFields.Contains(this))
+        {
+            CropField.allCropFields.Remove(this);
+        }
     }
 
     public List<CropTile> GetTiles()
     {
-        return cropTiles;
+        return this.cropTiles;
     }
-
-    private void NotifyRipened()
-    {
-        // Kiểm tra tất cả CropTile trong field
-        foreach (var tile in cropTiles)
-        {
-            if (!tile.IsReadyToHarvest()) return; // Nếu còn cây chưa chín, không đổi state
-        }
-
-        // Nếu tất cả đều chín, đổi state của field đó
-        state = TileFieldState.Ripened;
-        Debug.Log(gameObject.name + " is now fully ripened!");
-    }
-
-
 
     private void StoreTiles()
     {
-        for (int i = 0; i < tilesParent.childCount; i++)
-            cropTiles.Add(tilesParent.GetChild(i).GetComponent<CropTile>());
+        for (int i = 0; i < this.tilesParent.childCount; i++)
+        {
+            CropTile component = this.tilesParent.GetChild(i).GetComponent<CropTile>();
+            component.parentField = this;
+            this.cropTiles.Add(component);
+        }
     }
 
     public void Sow(ItemData cropData)
     {
-        PlayerStatusManager.Instance.UseStamina(1); // Mỗi lần dùng công cụ trừ 10 Stamina
+        PlayerStatusManager.Instance.UseStamina(1f);
         InventoryManager.Instance.GetInventory().RemoveItemByName(cropData.itemName, 1);
         this.cropData = cropData;
-        bool atLeastOneSown = false;
-        foreach (CropTile cropTile in cropTiles)
+        bool flag = false;
+        foreach (CropTile cropTile in this.cropTiles)
         {
             if (cropTile.IsEmpty())
             {
                 cropTile.Sow(cropData);
-                atLeastOneSown = true;
+                cropTile.hasCrop = true;
+                flag = true;
             }
         }
-        if (atLeastOneSown)
+        if (flag)
         {
             Debug.Log("At least one tile was sown!");
-            CheckFullySown();
+            this.CheckFullySown();
         }
     }
 
     private void CheckFullySown()
     {
-        foreach (var tile in cropTiles)
+        foreach (CropTile cropTile in this.cropTiles)
         {
-            if (tile.IsEmpty()) return; // Nếu còn ô trống, không cập nhật
+            if (cropTile.IsEmpty())
+            {
+                return;
+            }
         }
-        state = TileFieldState.Sown;
+        this.state = TileFieldState.Sown;
         Debug.Log("All tiles are now sown!");
     }
 
-
-
     public void FieldFullySown()
     {
-        state = TileFieldState.Sown;
+        this.state = TileFieldState.Sown;
     }
+
     public void Harvest(Transform harvestSphere)
     {
-        if (state != TileFieldState.Ripened)
+        if (this.state != TileFieldState.Ripened)
         {
-            Debug.LogWarning($"[{gameObject.name}] Không thể thu hoạch, cây chưa chín! State hiện tại: {state}");
+            Debug.LogWarning(string.Format("[{0}] Không thể thu hoạch, cây chưa chín! State hiện tại: {1}", base.gameObject.name, this.state));
             return;
         }
-
-        Debug.Log($"[{gameObject.name}] Đã vào function HARVEST, harvestSphere position: {harvestSphere.position}, scale: {harvestSphere.localScale}");
-
-        float sphereRadius = harvestSphere.localScale.x;
-
-        bool hasHarvested = false; // Kiểm tra xem có ô nào được thu hoạch không
-
-        for (int i = 0; i < cropTiles.Count; i++)
+        Debug.Log(string.Format("[{0}] Đã vào function HARVEST, harvestSphere position: {1}, scale: {2}", base.gameObject.name, harvestSphere.position, harvestSphere.localScale));
+        float x = harvestSphere.localScale.x;
+        bool flag = false;
+        for (int i = 0; i < this.cropTiles.Count; i++)
         {
-            if (cropTiles[i].IsEmpty())
+            if (this.cropTiles[i].IsEmpty())
             {
-                Debug.Log($"Tile {i} ({cropTiles[i].gameObject.name}) is empty, bỏ qua.");
-                continue;
+                Debug.Log(string.Format("Tile {0} ({1}) is empty, bỏ qua.", i, this.cropTiles[i].gameObject.name));
             }
-
-            float distanceCropTileSphere = Vector3.Distance(harvestSphere.position, cropTiles[i].transform.position);
-            Debug.Log($"Tile {i}: Distance = {distanceCropTileSphere}, Sphere Radius = {sphereRadius}");
-
-            Debug.Log($"Tile {i} ({cropTiles[i].gameObject.name}) sẵn sàng thu hoạch!");
-            HarvestTile(cropTiles[i]);
-            hasHarvested = true;
-
-
+            else
+            {
+                float num = Vector3.Distance(harvestSphere.position, this.cropTiles[i].transform.position);
+                Debug.Log(string.Format("Tile {0}: Distance = {1}, Sphere Radius = {2}", i, num, x));
+                Debug.Log(string.Format("Tile {0} ({1}) sẵn sàng thu hoạch!", i, this.cropTiles[i].gameObject.name));
+                this.HarvestTile(this.cropTiles[i]);
+                flag = true;
+            }
         }
-
-        if (!hasHarvested)
+        if (!flag)
         {
-            Debug.LogWarning($"[{gameObject.name}] Không có ô nào được thu hoạch! Kiểm tra lại khoảng cách hoặc trạng thái cây trồng.");
+            Debug.LogWarning("[" + base.gameObject.name + "] Không có ô nào được thu hoạch! Kiểm tra lại khoảng cách hoặc trạng thái cây trồng.");
         }
     }
-
-
-
 
     public bool IsEmpty()
     {
-        return state == TileFieldState.Empty;
+        return this.state == TileFieldState.Empty;
     }
-
-
 
     private void HarvestTile(CropTile cropTile)
     {
-        //if (!cropTile.IsReadyToHarvest() ) return;
-
         cropTile.Harvest();
-        tilesHarvested++;
-
-        CheckFullyHarvested();
+        this.tilesHarvested++;
+        this.CheckFullyHarvested();
     }
 
     private void CheckFullyHarvested()
     {
-        foreach (var tile in cropTiles)
+        foreach (CropTile cropTile in this.cropTiles)
         {
-            if (!tile.IsEmpty()) return;
+            if (!cropTile.IsEmpty())
+            {
+                return;
+            }
         }
-        FieldFullyHarvested();
+        this.FieldFullyHarvested();
     }
-
 
     public void FieldFullyHarvested()
     {
-        state = TileFieldState.Empty;
-        onFullyHarvested?.Invoke(this);
+        this.state = TileFieldState.Empty;
+        Action<CropField> action = CropField.onFullyHarvested;
+        if (action != null)
+        {
+            action(this);
+        }
     }
 
     public void FieldFullyWatered()
     {
-        state = TileFieldState.Watered;
+        this.state = TileFieldState.Watered;
+        Action<CropField> action = CropField.onFullyWatered;
+        if (action != null)
+        {
+            action(this);
+        }
+        foreach (CropTile cropTile in this.cropTiles)
+        {
+            if (cropTile.HasCrop())
+            {
+                cropTile.Water();
+            }
+        }
+        base.StartCoroutine(this.CheckForInfestation());
+        this.CheckNearbyCropFieldsAndWater(5f);
     }
+
+    private IEnumerator CheckForInfestation()
+    {
+        yield return new WaitForSeconds(300f);
+        if (UnityEngine.Random.value <= 0.4f)
+        {
+            this.state = TileFieldState.Infested;
+            Debug.Log(base.gameObject.name + " has become infested after watering!");
+        }
+        yield break;
+    }
+
     private void OnHarvestTriggered()
     {
-        Harvest(GameObject.FindObjectOfType<AnimationTriggerCrop>().transform);
+        this.Harvest(UnityEngine.Object.FindObjectOfType<AnimationTriggerCrop>().transform);
     }
 
     public List<GameObject> GetItemPlaced()
     {
-        return itemPlaced;
+        return this.itemPlaced;
     }
 
     public void ClearPlacedItem()
     {
-        Debug.Log($"Xóa {itemPlaced.Count} item trong CropField...");
-        foreach (var item in itemPlaced)
+        Debug.Log(string.Format("Xóa {0} item trong CropField...", this.itemPlaced.Count));
+        foreach (GameObject go in this.itemPlaced)
         {
-            Destroy(item.gameObject);
+            UnityEngine.Object.Destroy(go);
         }
-        itemPlaced.Clear();
-        Debug.Log($"Sau khi xóa: {itemPlaced.Count} item");
+        this.itemPlaced.Clear();
+        Debug.Log(string.Format("Sau khi xóa: {0} item", this.itemPlaced.Count));
     }
-
 
     public void LoadCropField(GameObject prefab, Vector3 position, Quaternion rotation)
     {
-        if (prefab == null) return;
-
-        GameObject placedObject = Instantiate(prefab, position, rotation);
-        itemPlaced.Add(placedObject); //  Thêm vào danh sách công trình đã đặt
-
-        Debug.Log($" Đã tải công trình '{prefab.name}' tại {position}!");
+        if (prefab == null)
+        {
+            return;
+        }
+        GameObject item = UnityEngine.Object.Instantiate(prefab, position, rotation);
+        this.itemPlaced.Add(item);
+        Debug.Log(string.Format(" Đã tải công trình '{0}' tại {1}!", prefab.name, position));
     }
 
+    private void OnCropTileRipened(CropTile ripenedTile)
+    {
+        if (!this.cropTiles.Contains(ripenedTile))
+        {
+            return;
+        }
+        foreach (CropTile cropTile in this.cropTiles)
+        {
+            if (!cropTile.IsReadyToHarvest())
+            {
+                return;
+            }
+        }
+        this.state = TileFieldState.Ripened;
+        Debug.Log(string.Format("[{0}] Tất cả ô trong CropField đã chín!", base.gameObject.name));
+    }
+
+    private void CheckNearbyCropFieldsAndWater(float radius = 5f)
+    {
+        foreach (CropField cropField in CropField.allCropFields)
+        {
+            if (!(cropField == this))
+            {
+                float num = Vector3.Distance(base.transform.position, cropField.transform.position);
+                if (num <= radius && cropField.state == TileFieldState.Sown)
+                {
+                    Debug.Log(string.Format("Tưới tự động: {0} trong bán kính {1} (khoảng cách: {2})", cropField.name, radius, num));
+                    cropField.FieldFullyWatered();
+                }
+            }
+        }
+    }
 }

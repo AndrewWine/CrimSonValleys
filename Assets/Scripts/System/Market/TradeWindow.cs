@@ -1,36 +1,35 @@
 ﻿using System;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.Events;
 using UnityEngine.UI;
 
 public class TradeWindow : MonoBehaviour
 {
-    [Header("Elements")]
+    [Header("UI Elements")]
     [SerializeField] private GameObject buttonPrefab;
     [SerializeField] private Transform buttonContainer;
     [SerializeField] private GameObject enterQuantity;
-    [SerializeField] private InputField quantityInputField; // Ô nhập số lượng
-    [SerializeField] private Button finishButton; // Nút hoàn tất nhập số lượng
+    [SerializeField] private InputField quantityInputField;
+    [SerializeField] private Button finishButton;
     [SerializeField] private UISelectButton uiSelectButton;
 
     [Header("Data")]
     [SerializeField] private ItemData[] items;
-    private Dictionary<ItemData, int> listItemChosen = new Dictionary<ItemData, int>(); // Lưu item + số lượng
-    private HashSet<ItemData> selectedItems = new HashSet<ItemData>(); // Lưu trạng thái đã chọn
 
-    [Header("Actions")]
+    [Header("Events")]
     public static Action<Dictionary<ItemData, int>> SellItem;
     public static Action<Dictionary<ItemData, int>> BuyItem;
     public static Action<ItemData> EnableNotifyToolTipItem;
     public static Action<ItemData> DisableNotifyToolTipItem;
 
+    private ItemData currentItem;
+    private Dictionary<ItemData, int> listItemChosen = new();
+    private HashSet<ItemData> selectedItems = new();
 
-    private ItemData currentItem; // Item đang nhập số lượng
     private void Start()
     {
-        enterQuantity.gameObject.SetActive(false);
-
-        // Trước khi thêm sự kiện, xóa hết để tránh bị trùng lặp
+        enterQuantity.SetActive(false);
         finishButton.onClick.RemoveAllListeners();
         finishButton.onClick.AddListener(OnFinishButtonPressed);
     }
@@ -39,21 +38,19 @@ public class TradeWindow : MonoBehaviour
     {
         UISelectButton.tradeButtonPressed += OnItemClicked;
         UISelectButton.tradeShopCraftButtonPressed += OnItemClicked;
-
-
     }
 
     private void OnDisable()
     {
         UISelectButton.tradeButtonPressed -= OnItemClicked;
         UISelectButton.tradeShopCraftButtonPressed -= OnItemClicked;
-
     }
 
+    /// <summary>
+    /// Gọi khi người dùng click vào item trong danh sách.
+    /// </summary>
     public void OnItemClicked(ItemData clickedItem)
     {
-       
-        // Nếu đang chọn một vật phẩm khác, bỏ chọn vật phẩm cũ
         if (currentItem != null && currentItem != clickedItem)
         {
             uiSelectButton.SetClickedBorderActive(currentItem, false);
@@ -63,65 +60,51 @@ public class TradeWindow : MonoBehaviour
 
         if (selectedItems.Contains(clickedItem))
         {
-            // Nếu click vào chính nó => Bỏ chọn
             selectedItems.Remove(clickedItem);
             listItemChosen.Remove(clickedItem);
             uiSelectButton.SetClickedBorderActive(clickedItem, false);
             enterQuantity.SetActive(false);
-            currentItem = null; // Reset vật phẩm hiện tại
+            currentItem = null;
             TooltipManager.Instance.HideTooltip();
+            return;
+        }
 
-        }
-        else
-        {
-            // Chọn vật phẩm mới
-            currentItem = clickedItem;
-            selectedItems.Add(clickedItem);
-            enterQuantity.SetActive(true);
-            quantityInputField.text = ""; // Reset ô nhập
-            uiSelectButton.SetClickedBorderActive(clickedItem, true);
-            TooltipManager.Instance.ShowToolTipOnTradeWindow(currentItem);
-        }
+        currentItem = clickedItem;
+        selectedItems.Add(clickedItem);
+        enterQuantity.SetActive(true);
+        quantityInputField.text = "";
+        uiSelectButton.SetClickedBorderActive(clickedItem, true);
+        TooltipManager.Instance.ShowToolTipOnTradeWindow(currentItem);
     }
 
-    // Khi người dùng nhấn "add" sau khi nhập số lượng
+    /// <summary>
+    /// Gọi khi người dùng bấm nút "OK" sau khi nhập số lượng.
+    /// </summary>
     public void OnFinishButtonPressed()
     {
         if (currentItem == null) return;
 
         if (int.TryParse(quantityInputField.text, out int quantity) && quantity > 0)
         {
-            // Thêm hoặc cập nhật số lượng item đã chọn
             listItemChosen[currentItem] = quantity;
             Debug.Log($"{currentItem.itemName} x{quantity} đã được thêm vào danh sách.");
+            enterQuantity.SetActive(false);
+            currentItem = null;
         }
         else
         {
             Debug.LogError("Số lượng nhập không hợp lệ!");
-            return;
         }
-
-        enterQuantity.SetActive(false);
-        currentItem = null; // Reset item đang nhập
     }
 
-    // Xóa trạng thái chọn sau khi bán/mua
-    private void ResetTradeSelection()
-    {
-        foreach (var item in selectedItems)
-        {
-            uiSelectButton.SetClickedBorderActive(item, false);
-        }
-        selectedItems.Clear();
-        listItemChosen.Clear();
-        enterQuantity.SetActive(false);
-    }
-
+    /// <summary>
+    /// Gọi khi bấm nút bán.
+    /// </summary>
     public void OnSellButtonPressed()
     {
         if (listItemChosen.Count > 0)
         {
-            SellItem?.Invoke(new Dictionary<ItemData, int>(listItemChosen));//tradeinteraction
+            SellItem?.Invoke(new Dictionary<ItemData, int>(listItemChosen));
             ResetTradeSelection();
         }
         else
@@ -130,6 +113,9 @@ public class TradeWindow : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// Gọi khi bấm nút mua.
+    /// </summary>
     public void OnBuyButtonPressed()
     {
         if (listItemChosen.Count > 0)
@@ -141,5 +127,22 @@ public class TradeWindow : MonoBehaviour
         {
             Debug.Log("Không có vật phẩm nào để mua!");
         }
+    }
+
+    /// <summary>
+    /// Đặt lại trạng thái chọn vật phẩm và UI liên quan.
+    /// </summary>
+    private void ResetTradeSelection()
+    {
+        foreach (var item in selectedItems)
+        {
+            uiSelectButton.SetClickedBorderActive(item, false);
+        }
+
+        selectedItems.Clear();
+        listItemChosen.Clear();
+        enterQuantity.SetActive(false);
+        currentItem = null;
+        TooltipManager.Instance.HideTooltip();
     }
 }

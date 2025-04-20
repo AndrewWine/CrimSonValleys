@@ -23,9 +23,10 @@ public class IdleStatePlayer : PlayerState
         base.LogicUpdate();
 
         // Kiểm tra joystick có input không
-        if (joystick != null && joystick.GetMoveVector().magnitude > 0.1f)
+        if (Input.GetAxisRaw("Horizontal") != 0f || Input.GetAxisRaw("Vertical") != 0f)
         {
-            stateMachine.ChangeState(blackboard.moveState);
+            this.stateMachine.ChangeState(this.blackboard.moveState);
+            return;
         }
 
         else if (blackboard.sowButtonPressed && blackboard.seed != null)

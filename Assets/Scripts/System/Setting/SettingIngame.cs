@@ -1,42 +1,75 @@
-﻿using System.Collections;
+﻿using System;
+using System.Collections;
 using UnityEngine;
-using System;
 using UnityEngine.SceneManagement;
+using UnityEngine.UI;
+
+// Token: 0x020000CA RID: 202
 public class SettingIngame : MonoBehaviour
 {
+    // Token: 0x04000452 RID: 1106
     [Header("Elements")]
     [SerializeField] private GameObject SettingWindow;
     [SerializeField] private GameObject SettingRectTransform;
     [SerializeField] private GameObject openButton;
     [SerializeField] private GameObject closeButton;
     [SerializeField] private GameObject soundEditor;
+    [SerializeField] private Image fadeScreen;
 
-    private Vector3 hiddenPosition;  // Vị trí khi cửa sổ ở ngoài màn hình
-    private Vector3 visiblePosition; // Vị trí khi cửa sổ mở (di chuyển vào trong)
-    [SerializeField] private float moveSpeed = 2000f;  // Tăng tốc độ để tránh bị chậm
-    [SerializeField] private float moveDistance = 200f; // Khoảng cách di chuyển
+    // Token: 0x04000458 RID: 1112
+    private Vector3 hiddenPosition;
+    private Vector3 visiblePosition;
 
+    // Token: 0x0400045A RID: 1114
+    [SerializeField] private float moveSpeed = 2500f;
+    [SerializeField] private float moveDistance = 200f;
+
+    private bool check;
 
     private void Start()
     {
-        InitialSetting();
+        InitializeSettings();
+        StartCoroutine(FadeFromBlack(1f));
     }
 
-    private void InitialSetting()
+    private void LateUpdate()
     {
-        if (SettingRectTransform == null) return;
-        hiddenPosition = SettingRectTransform.transform.localPosition;  // Vị trí ban đầu (ngoài màn hình)
-        visiblePosition = hiddenPosition + new Vector3(moveDistance, 0, 0);  // Di chuyển vào 200px
+        HandleEscapeKeyPress();
+    }
+
+    private void InitializeSettings()
+    {
+        if (SettingRectTransform == null)
+            return;
+
+        hiddenPosition = SettingRectTransform.transform.localPosition;
+        visiblePosition = hiddenPosition + new Vector3(moveDistance, 0f, 0f);
         openButton.SetActive(true);
         closeButton.SetActive(false);
         soundEditor.SetActive(false);
+    }
+
+    private void HandleEscapeKeyPress()
+    {
+        if (Input.GetKeyDown(KeyCode.Escape))
+        {
+            if (check)
+            {
+                OnOpenWindowPressed();
+            }
+            else
+            {
+                OnCloseWindowPressed();
+            }
+
+            check = !check;
+        }
     }
 
     public void OnOpenWindowPressed()
     {
         SettingWindow.SetActive(true);
         StartCoroutine(MoveIn(visiblePosition));
-
         openButton.SetActive(false);
         closeButton.SetActive(true);
     }
@@ -44,8 +77,7 @@ public class SettingIngame : MonoBehaviour
     public void OnCloseWindowPressed()
     {
         TooltipManager.Instance.HideTooltip();
-        StartCoroutine(MoveOut(hiddenPosition));  // Di chuyển về vị trí cũ
-
+        StartCoroutine(MoveOut(hiddenPosition));
         openButton.SetActive(true);
         closeButton.SetActive(false);
     }
@@ -58,37 +90,44 @@ public class SettingIngame : MonoBehaviour
                 SettingRectTransform.transform.localPosition, targetPosition, moveSpeed * Time.deltaTime);
             yield return null;
         }
-
-        // Đảm bảo vị trí chính xác khi kết thúc
         SettingRectTransform.transform.localPosition = targetPosition;
     }
 
     private IEnumerator MoveOut(Vector3 targetPosition)
     {
-        while (Vector3.Distance(SettingRectTransform.transform.localPosition, targetPosition) > 1f) // Sửa điều kiện
+        while (Vector3.Distance(SettingRectTransform.transform.localPosition, targetPosition) > 1f)
         {
             SettingRectTransform.transform.localPosition = Vector3.MoveTowards(
                 SettingRectTransform.transform.localPosition, targetPosition, moveSpeed * Time.deltaTime);
             yield return null;
         }
-        // Đảm bảo vị trí chính xác khi kết thúc
         SettingRectTransform.transform.localPosition = targetPosition;
     }
 
     public void OnSaveGamePressed()
     {
+        StartCoroutine(FadeSaveEffect());
+    }
+
+    private IEnumerator FadeSaveEffect()
+    {
+        yield return StartCoroutine(FadeToBlack(0.3f));
         WorldManager.instance.SaveWorld();
         InventoryManager.Instance.SaveInventory();
-        Debug.Log("Da bam nut save game");
+        Debug.Log("Game Saved");
+        yield return StartCoroutine(FadeFromBlack(0.3f));
     }
 
     public void ExitToMainMenu()
     {
+        StartCoroutine(FadeAndGoToMainMenu());
+    }
+
+    private IEnumerator FadeAndGoToMainMenu()
+    {
+        yield return StartCoroutine(FadeToBlack(1f));
         WorldManager.instance.SaveWorld();
-
-        // Chuyển sang scene game trước khi load dữ liệu
         SceneManager.LoadScene("MainMenu");
-
     }
 
     public void EnableSoundEditor()
@@ -99,5 +138,32 @@ public class SettingIngame : MonoBehaviour
     public void DisableSoundEditor()
     {
         soundEditor.SetActive(false);
+    }
+
+    private IEnumerator FadeToBlack(float duration)
+    {
+        fadeScreen.color = new Color(0f, 0f, 0f, 0f);
+        float timer = 0f;
+
+        while (timer < duration)
+        {
+            timer += Time.deltaTime;
+            float a = Mathf.Lerp(0f, 1f, timer / duration);
+            fadeScreen.color = new Color(0f, 0f, 0f, a);
+            yield return null;
+        }
+    }
+
+    private IEnumerator FadeFromBlack(float duration)
+    {
+        float timer = 0f;
+
+        while (timer < duration)
+        {
+            timer += Time.deltaTime;
+            float a = Mathf.Lerp(1f, 0f, timer / duration);
+            fadeScreen.color = new Color(0f, 0f, 0f, a);
+            yield return null;
+        }
     }
 }

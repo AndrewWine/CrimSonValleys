@@ -1,28 +1,26 @@
-﻿using UnityEngine;
+﻿using System;
 using System.Collections;
 using System.Collections.Generic;
-using System;
+using UnityEngine;
+
 public class OreRock : MonoBehaviour, IDamageAble
 {
     [Header("Ore Properties")]
-    public float maxHealth = 20;
+    [SerializeField] private float maxHealth = 10f;
     private float currentHealth;
-
     private Vector3 originalPosition;
+    private bool canDropItem;
 
     [Header("Actions")]
     public static Action decreasedPickAxeDurability;
 
-    [System.Serializable]
-    public struct DropItem
-    {
-        public ItemData itemData;
-        public float dropRate;
-        public int dropAmount;
-    }
-
     [Header("Drop Table (Editable)")]
     public List<DropItem> dropTable = new List<DropItem>();
+
+    private void Start()
+    {
+        canDropItem = true;
+    }
 
     private void OnEnable()
     {
@@ -33,102 +31,97 @@ public class OreRock : MonoBehaviour, IDamageAble
     public void TakeDamage(float damage)
     {
         currentHealth -= damage;
-        PlayerStatusManager.Instance.UseStamina(1);
-        decreasedPickAxeDurability?.Invoke();// EquipItem
-        ShakeEffect();
-        // Lấy item Pickaxe nếu đang được trang bị
-        ItemData equippedItem = ListEquipment.Instance?.GetEquippedItemByEquipType(EquipType.Pickaxe);
 
-        if (equippedItem != null)
+        PlayerStatusManager.Instance.UseStamina(1f);
+        decreasedPickAxeDurability?.Invoke();
+
+        ItemData pickaxe = ListEquipment.Instance?.GetEquippedItemByEquipType(EquipType.Pickaxe);
+        if (pickaxe != null)
         {
-            equippedItem.durability -= 1;
-           // Debug.Log($"{equippedItem.itemName} durability giảm xuống: {equippedItem.durability}");
-
-            // Nếu durability <= 0, gỡ item khỏi trang bị
-            if (equippedItem.durability <= 0)
+            pickaxe.durability--;
+            if (pickaxe.durability <= 0)
             {
-                ListEquipment.Instance.RemoveItem(equippedItem);
-                Debug.Log($"{equippedItem.itemName} đã bị hỏng và bị gỡ khỏi trang bị!");
+                ListEquipment.Instance.RemoveItem(pickaxe);
+                Debug.Log($"{pickaxe.itemName} đã bị hỏng và bị gỡ khỏi trang bị!");
             }
         }
 
-        if (currentHealth <= 0)
+        if (currentHealth <= 0f)
         {
             MineOre();
+            ExecuteOre();
         }
     }
 
     private void MineOre()
     {
-        DropItem? droppedItem = GetRandomDrop();
-        if (droppedItem.HasValue)
+        if (canDropItem)
         {
-            InventoryManager.Instance.PickUpItemCallBack(droppedItem.Value.itemData.itemName, droppedItem.Value.dropAmount);
+            DropItem? randomDrop = GetRandomDrop();
+            if (randomDrop.HasValue)
+            {
+                InventoryManager.Instance.PickUpItemCallBack(
+                    randomDrop.Value.itemData.itemName,
+                    randomDrop.Value.dropAmount
+                );
+            }
+
+            if (ObjectPool.Instance != null)
+            {
+                ObjectPool.Instance.ReturnObject(gameObject);
+                ObjectPool.Instance.StartCoroutine(RespawnOre());
+            }
+            else
+            {
+                Debug.LogError("ObjectPool.Instance is null! Make sure ObjectPool exists in the scene.");
+            }
         }
-
-
-        // Trả về Object Pool
-        if (ObjectPool.Instance != null)
-        {
-            ObjectPool.Instance.ReturnObject(gameObject);
-        }
-        else
-        {
-            Debug.LogError("ObjectPool.Instance is null! Make sure ObjectPool exists in the scene.");
-        }
-
-
-        // Đợi 10 phút rồi spawn lại từ Object Pool
-        ObjectPool.Instance.StartCoroutine(RespawnOre());
-    }
-
-    private void ShakeEffect()
-    {
-        Vector3 originalPos = transform.position;
-        float elapsedTime = 0f;
-        float duration = 0.1f;
-
-        while (elapsedTime < duration)
-        {
-            float x = UnityEngine.Random.Range(-0.1f, 0.1f);
-            float y = UnityEngine.Random.Range(-0.1f, 0.1f);
-            transform.position = originalPos + new Vector3(x, y, 0);
-            elapsedTime += Time.deltaTime;
-
-        }
-
-        transform.position = originalPos;
     }
 
     private IEnumerator RespawnOre()
     {
-        yield return new WaitForSeconds(600f); // Chờ 10 phút
-
-        GameObject newOre = ObjectPool.Instance.GetObject(originalPosition);
-        OreRock oreRock = newOre.GetComponent<OreRock>();
-        oreRock.ResetOre();
+        yield return new WaitForSeconds(600f);
+        GameObject respawned = ObjectPool.Instance.GetObject(originalPosition);
+        respawned.GetComponent<OreRock>().ResetOre();
     }
 
     public void ResetOre()
     {
         currentHealth = maxHealth;
+        canDropItem = true;
         transform.position = originalPosition;
         gameObject.SetActive(true);
     }
 
     private DropItem? GetRandomDrop()
     {
-        float randomValue = UnityEngine.Random.Range(0f, 100f);
-        float cumulativeProbability = 0f;
+        float rand = UnityEngine.Random.Range(0f, 100f);
+        float cumulative = 0f;
 
-        foreach (var drop in dropTable)
+        foreach (DropItem drop in dropTable)
         {
-            cumulativeProbability += drop.dropRate;
-            if (randomValue <= cumulativeProbability)
-            {
+            cumulative += drop.dropRate;
+            if (rand <= cumulative)
                 return drop;
-            }
         }
+
         return null;
+    }
+
+    private void ExecuteOre()
+    {
+        if (currentHealth < 1f)
+        {
+            gameObject.SetActive(false);
+            canDropItem = false;
+        }
+    }
+
+    [Serializable]
+    public struct DropItem
+    {
+        public ItemData itemData;
+        public float dropRate;
+        public int dropAmount;
     }
 }

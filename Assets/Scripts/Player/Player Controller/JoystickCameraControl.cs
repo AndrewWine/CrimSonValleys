@@ -1,154 +1,151 @@
-﻿using UnityEngine;
+﻿using System;
+using Cinemachine;
+using UnityEngine;
 
 public class JoystickCameraControl : MonoBehaviour
 {
     [Header("Joystick Settings")]
-    [SerializeField] private RectTransform joystickOutline; // Bao ngoài joystick
-    [SerializeField] private RectTransform joysticKnob;     // Nút điều khiển của joystick
-    public RectTransform JoystickOutline => joystickOutline;
-    public RectTransform JoysticKnob => joysticKnob;
-
+    [SerializeField]
+    private RectTransform joystickOutline;
+    [SerializeField]
+    private RectTransform joysticKnob;
     [Header("Joystick Movement Settings")]
-    [SerializeField] private float moveFactor = 1f;         // Hệ số điều chỉnh độ di chuyển của joystick
+    [SerializeField]
+    private float moveFactor = 1f;
     private Vector3 clickedPosition;
     private Vector3 move;
     private bool canControl;
     private float maxdistanceOfKnob = 0.3f;
-
     [Header("Camera Rotation Settings")]
-    public float rotationSpeed = 2f;  // Tốc độ quay của camera
-    [SerializeField] private Cinemachine.CinemachineVirtualCamera virtualCamera; // Cinemachine Virtual Camera
-    [SerializeField] private Transform player; // Đối tượng nhân vật (Player)
+    public float rotationSpeed = 2f;
+    [SerializeField]
+    private CinemachineVirtualCamera virtualCamera;
+    [SerializeField]
+    private Transform player;
     private Transform cameraTransform;
-
-    void Start()
+    public RectTransform JoystickOutline
     {
-        if (virtualCamera != null)
+        get
         {
-            cameraTransform = virtualCamera.transform; // Lấy transform của camera
+            return this.joystickOutline;
         }
-
-        HideJoystick();
     }
 
-    void Update()
+    public RectTransform JoysticKnob
     {
-        if (canControl)
+        get
         {
-            ControlJoystick();
+            return this.joysticKnob;
         }
+    }
 
-        // Điều khiển camera quay
-        if (cameraTransform != null)
+    private void Start()
+    {
+        if (this.virtualCamera != null)
         {
-            Vector3 moveInput = GetMoveVector();
-            if (moveInput.magnitude > 0.1f)
+            this.cameraTransform = this.virtualCamera.transform;
+        }
+        this.HideJoystick();
+    }
+
+    private void Update()
+    {
+        if (this.canControl)
+        {
+            this.ControlJoystick();
+        }
+        if (this.cameraTransform != null)
+        {
+            Vector3 moveVector = this.GetMoveVector();
+            if (moveVector.magnitude > 0.1f)
             {
-                RotateCamera(moveInput);
-                RotatePlayer(moveInput); // Xoay nhân vật theo hướng camera
+                this.RotateCamera(moveVector);
+                this.RotatePlayer(moveVector);
             }
         }
     }
 
     public void ClickOnJoystrickZoneCallback()
     {
-        // Sử dụng touch hoặc chuột
         if (Input.touchCount > 0)
         {
-            clickedPosition = Input.GetTouch(0).position; // Chạm đầu tiên
+            this.clickedPosition = Input.GetTouch(0).position;
         }
         else
         {
-            clickedPosition = Input.mousePosition; // Chuột
+            this.clickedPosition = Input.mousePosition;
         }
-
-        joystickOutline.position = clickedPosition;
-        joysticKnob.position = joystickOutline.position;
-        ShowJoystick();
-        canControl = true;
+        this.joystickOutline.position = this.clickedPosition;
+        this.joysticKnob.position = this.joystickOutline.position;
+        this.ShowJoystick();
+        this.canControl = true;
     }
 
     private void ShowJoystick()
     {
-        joystickOutline.gameObject.SetActive(true);
+        this.joystickOutline.gameObject.SetActive(true);
     }
 
     private void HideJoystick()
     {
-        joystickOutline.gameObject.SetActive(false);
-        canControl = false;
-        move = Vector3.zero;
+        this.joystickOutline.gameObject.SetActive(false);
+        this.canControl = false;
+        this.move = Vector3.zero;
     }
 
     private void ControlJoystick()
     {
-        Vector3 currentPosition;
-
-        // Kiểm tra có chạm hay không
+        Vector3 a;
         if (Input.touchCount > 0)
         {
-            currentPosition = Input.GetTouch(0).position; // Lấy vị trí của chạm đầu tiên
+            a = Input.GetTouch(0).position;
         }
         else
         {
-            currentPosition = Input.mousePosition; // Sử dụng chuột nếu không có chạm
+            a = Input.mousePosition;
         }
-
-        // Tính toán vector di chuyển
-        Vector3 direction = currentPosition - clickedPosition;
-
-        float moveMagnitude = direction.magnitude * moveFactor / Screen.width;
-        moveMagnitude = Mathf.Min(moveMagnitude, joystickOutline.rect.width / 2);
-
-        move = direction.normalized * maxdistanceOfKnob * moveMagnitude;
-
-        Vector3 targetPosition = clickedPosition + move;
-        joysticKnob.position = targetPosition;
-
-        // Kiểm tra nếu chuột hoặc chạm kết thúc, ẩn joystick
+        Vector3 vector = a - this.clickedPosition;
+        float num = vector.magnitude * this.moveFactor / (float)Screen.width;
+        num = Mathf.Min(num, this.joystickOutline.rect.width / 2f);
+        this.move = vector.normalized * this.maxdistanceOfKnob * num;
+        Vector3 position = this.clickedPosition + this.move;
+        this.joysticKnob.position = position;
         if (Input.touchCount == 0 && !Input.GetMouseButton(0))
         {
-            HideJoystick();
+            this.HideJoystick();
         }
     }
 
-
-    // Trả về vector di chuyển của joystick
     public Vector3 GetMoveVector()
     {
-        return move;
+        return this.move;
     }
 
-    // Xoay camera theo input từ joystick
     private void RotateCamera(Vector3 moveInput)
     {
-        float horizontalRotation = moveInput.x * rotationSpeed * Time.deltaTime;
-        float verticalRotation = moveInput.y * rotationSpeed * Time.deltaTime;
-
-        // Điều khiển camera qua transform
-        cameraTransform.Rotate(Vector3.up * horizontalRotation, Space.World);  // Xoay theo trục Y (ngang)
-        cameraTransform.Rotate(Vector3.left * verticalRotation, Space.Self);   // Xoay theo trục X (dọc)
+        float d = moveInput.x * this.rotationSpeed * Time.deltaTime;
+        float d2 = moveInput.y * this.rotationSpeed * Time.deltaTime;
+        this.cameraTransform.Rotate(Vector3.up * d, Space.World);
+        this.cameraTransform.Rotate(Vector3.left * d2, Space.Self);
     }
 
-    // Xoay nhân vật theo input từ joystick
     private void RotatePlayer(Vector3 moveInput)
     {
-        // Tính góc quay cho nhân vật dựa trên input từ joystick
-        float horizontalRotation = moveInput.x * rotationSpeed * Time.deltaTime;
-
-        if (player != null)
+        float d = moveInput.x * this.rotationSpeed * Time.deltaTime;
+        if (this.player != null)
         {
-            // Xoay nhân vật theo hướng của camera
-            player.Rotate(Vector3.up * horizontalRotation, Space.World); // Xoay theo trục Y của nhân vật
+            this.player.Rotate(Vector3.up * d, Space.World);
         }
     }
 
     public void ClickOnCameraJoystrickZoneCallback()
     {
-        clickedPosition = Input.mousePosition;
-        joystickOutline.position = clickedPosition;
-        joysticKnob.position = joystickOutline.position;
-        ShowJoystick();
-        canControl = true;
+        this.clickedPosition = Input.mousePosition;
+        this.joystickOutline.position = this.clickedPosition;
+        this.joysticKnob.position = this.joystickOutline.position;
+        this.ShowJoystick();
+        this.canControl = true;
     }
+
+
 }

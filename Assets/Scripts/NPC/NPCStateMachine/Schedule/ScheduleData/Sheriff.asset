@@ -14,38 +14,58 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   scheduleEntries:
   - startTime: 0.25
+    endTime: 0.26
     desiredState: 3
     targetName: sheriffSpotSleep
   - startTime: 0.27
+    endTime: 0.29
     desiredState: 1
     targetName: Center
   - startTime: 0.3
+    endTime: 0.395
     desiredState: 1
     targetName: ShopHouse_StopSpot
   - startTime: 0.4
+    endTime: 0.42
     desiredState: 1
     targetName: JohnAndLindaHouseStopSpot
   - startTime: 0.43
+    endTime: 0.45
     desiredState: 1
     targetName: AlextandMerlinHouseStopSpot2
   - startTime: 0.73
+    endTime: 0.84
     desiredState: 1
     targetName: SheriffChurchStopSpot
   - startTime: 0.85
+    endTime: 1
     desiredState: 1
     targetName: sheriffSpotSleep
-  - startTime: 0.45
+  - startTime: 0.46
+    endTime: 0.479
     desiredState: 1
     targetName: PowerPlantStopSpot
   - startTime: 0.48
+    endTime: 0.499
     desiredState: 1
     targetName: MiddleBrigde
   - startTime: 0.5
+    endTime: 0.529
     desiredState: 1
     targetName: PlayerLandStopSpot
   - startTime: 0.53
+    endTime: 0.55
     desiredState: 1
-    targetName: LumberHouseStopSpot
+    targetName: WayToMine0
+  - startTime: 0.559
+    endTime: 0.6
+    desiredState: 1
+    targetName: WayToMine
   - startTime: 0.6
+    endTime: 0.65
     desiredState: 1
-    targetName: MineStopSpot1
+    targetName: WayToMine1
+  - startTime: 0.66
+    endTime: 0.7
+    desiredState: 1
+    targetName: WayToMine2

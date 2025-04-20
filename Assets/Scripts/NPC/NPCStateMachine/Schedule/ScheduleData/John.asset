@@ -14,35 +14,50 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   scheduleEntries:
   - startTime: 0.25
+    endTime: 0.26
     desiredState: 1
     targetName: JohnStopSpot
   - startTime: 0.27
+    endTime: 0.279
     desiredState: 1
     targetName: JohnFarmStopSpot
   - startTime: 0.28
+    endTime: 0.284
     desiredState: 1
     targetName: JohnFarmStopSpot2
-  - startTime: 0.4
-    desiredState: 1
-    targetName: BlackSmithStopSpot
+  - startTime: 0.285
+    endTime: 0.419
+    desiredState: 4
+    targetName: JohnFarmStopSpot2
   - startTime: 0.42
+    endTime: 0.51
     desiredState: 1
     targetName: JohnAndLindaHouseSleepSpot
   - startTime: 0.5
+    endTime: 0.54
     desiredState: 1
     targetName: LakeStopSpot1
   - startTime: 0.55
+    endTime: 0.6
     desiredState: 1
     targetName: LakeStopSpot1
   - startTime: 0.7
+    endTime: 0.73
     desiredState: 1
     targetName: ShopHouse_StopSpot2
   - startTime: 0.74
+    endTime: 0.77
     desiredState: 1
     targetName: JohnAndLindaHouseSleepSpot
   - startTime: 0.78
+    endTime: 0.84
     desiredState: 1
     targetName: JohnChurchStopSpot
   - startTime: 0.85
+    endTime: 1
     desiredState: 1
     targetName: JohnAndLindaHouseSleepSpot
+  - startTime: 0.61
+    endTime: 0.69
+    desiredState: 1
+    targetName: BlackSmithStopSpot

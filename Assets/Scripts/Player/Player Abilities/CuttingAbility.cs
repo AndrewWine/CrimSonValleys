@@ -1,63 +1,44 @@
-﻿using UnityEngine;
+﻿using System;
+using UnityEngine;
 
 public class CuttingAbility : MonoBehaviour
 {
-    [Header(" Elements ")]
-    [SerializeField] public Transform checkGameObject;
-    [Header(" Settings ")]
-    private bool canCut;
-    private Tree targetTree;
-    private PlayerBlackBoard blackBoard;
-    [Header("Actions")]
-    public static System.Action<Transform, float> Cutting;
+    [SerializeField]
+    public Transform checkGameObject;
 
-    void Start()
+    private bool canCut;
+
+    private PlayerBlackBoard blackBoard;
+
+    public static Action<Transform, float> Cutting;
+
+    public static Action causeDamage;
+    private void Start()
     {
-        blackBoard = GetComponentInParent<PlayerBlackBoard>();
-        CutState.notifyCutting += OnCuttingButtonPressed;
+        this.blackBoard = base.GetComponentInParent<PlayerBlackBoard>();
+        CutState.notifyCutting = (Action)Delegate.Combine(CutState.notifyCutting, new Action(this.OnCuttingButtonPressed));
     }
 
     private void OnDestroy()
     {
-        CutState.notifyCutting -= OnCuttingButtonPressed;
+        CutState.notifyCutting = (Action)Delegate.Remove(CutState.notifyCutting, new Action(this.OnCuttingButtonPressed));
     }
 
     public void OnCuttingButtonPressed()
     {
-        if (targetTree != null)
-        {
-            PlayerStatusManager.Instance.UseStamina(1); // Mỗi lần dùng công cụ trừ 10 Stamina
-            targetTree.TakeDamage(blackBoard.Axedamage);
-            
-        }
-        else
+        if (!this.blackBoard.isTree)
         {
             Debug.Log("No tree detected!");
+            return;
         }
-    }
-
-    // Kiểm tra xem có đối tượng nào trong vùng trigger không
-    private void OnTriggerStay(Collider other)
-    {
-
-        if (other.CompareTag("Tree"))
+        PlayerStatusManager.Instance.UseStamina(1f);
+        Action action = CuttingAbility.causeDamage;
+        if (action == null)
         {
-            targetTree = other.GetComponent<Tree>();
-            blackBoard.isTree = true;
+            return;
         }
+        action();
     }
 
-
-    private void OnTriggerExit(Collider other)
-    {
-
-        if (other.CompareTag("Tree"))
-        {
-            //Debug.Log($"Exited tree: {other.gameObject.name}");
-            targetTree = null;
-            blackBoard.isTree = false;
-
-        }
-    }
-
+    
 }

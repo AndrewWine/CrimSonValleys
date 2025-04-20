@@ -1,21 +1,28 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using UnityEngine;
-using System;
 
 public class TraderInteraction : MonoBehaviour
 {
+    // Elements
     [Header("Elements")]
-    [SerializeField] private InventoryManager inventoryManager;
-    [SerializeField] private GameObject WindowPanel;
+    [SerializeField]
+    private InventoryManager inventoryManager;
 
+    [SerializeField]
+    private GameObject WindowPanel;
+
+    // Actions
     [Header("Actions")]
     public static Action EnableMarketWindow;
     public static Action<bool> OpenedMarketWindow;
 
     private void Start()
     {
-        TradeWindow.SellItem += OnSellItem; // Đăng ký sự kiện bán hàng
-        TradeWindow.BuyItem += OnBuyItem; // Đăng ký sự kiện mua hàng
+        // Subscribe to trade events
+        TradeWindow.SellItem += OnSellItem;
+        TradeWindow.BuyItem += OnBuyItem;
+
         InitializeSettings();
     }
 
@@ -26,55 +33,55 @@ public class TraderInteraction : MonoBehaviour
 
     private void OnDestroy()
     {
-        TradeWindow.SellItem -= OnSellItem; // Hủy đăng ký sự kiện khi đối tượng bị hủy
+        // Unsubscribe from trade events
+        TradeWindow.SellItem -= OnSellItem;
         TradeWindow.BuyItem -= OnBuyItem;
     }
 
     private void OnSellItem(Dictionary<ItemData, int> soldItems)
     {
-        
         if (inventoryManager == null)
         {
-            Debug.LogError("InventoryManager chưa được gán!");
+            Debug.LogError("InventoryManager is not assigned!");
             return;
         }
 
         Inventory inventory = inventoryManager.GetInventory();
-        int coinsEarned = 0;
+        int totalEarned = 0;
 
-        foreach (var soldEntry in soldItems)
+        foreach (var item in soldItems)
         {
-            ItemData soldItem = soldEntry.Key;
-            int quantityToSell = soldEntry.Value;
+            ItemData itemData = item.Key;
+            int quantity = item.Value;
 
-            InventoryItem[] items = inventory.GetInventoryItems();
+            InventoryItem[] inventoryItems = inventory.GetInventoryItems();
+            bool itemSold = false;
 
-            // Tìm vật phẩm trong kho để bán
-            for (int i = 0; i < items.Length; i++)
+            foreach (var inventoryItem in inventoryItems)
             {
-                if (items[i].itemName == soldItem.itemName)
+                if (inventoryItem.itemName == itemData.itemName)
                 {
-                    int itemPrice = DataManagers.instance.GetItemPriceFromItemName(items[i].itemName);
+                    int itemPrice = DataManagers.instance.GetItemPriceFromItemName(inventoryItem.itemName);
 
-                    // Kiểm tra số lượng vật phẩm trong kho
-                    if (items[i].amount >= quantityToSell)
+                    if (inventoryItem.amount >= quantity)
                     {
-                        // Thực hiện bán vật phẩm
-                        coinsEarned += itemPrice * quantityToSell;
-                        inventory.RemoveItemByName(items[i].itemName, quantityToSell);
+                        totalEarned += itemPrice * quantity;
+                        inventory.RemoveItemByName(inventoryItem.itemName, quantity);
+                        itemSold = true;
+                        break;
                     }
-                    else
-                    {
-                        Debug.LogError($"Không đủ {soldItem.itemName} để bán! (Yêu cầu: {quantityToSell}, Hiện có: {items[i].amount})");
-                    }
+
+                    Debug.LogError($"Not enough {itemData.itemName} to sell! (Required: {quantity}, Available: {inventoryItem.amount})");
                     break;
                 }
             }
+
+            if (!itemSold)
+                break;
         }
 
-        Debug.Log($"Đã kiếm được {coinsEarned} coins.");
-        CashManager.instance.AddCoins(coinsEarned);
-
+        Debug.Log($"Earned {totalEarned} coins.");
+        CashManager.instance.AddCoins(totalEarned);
         inventoryManager.GetInventoryDisplay().UpdateDisplay(inventory);
     }
 
@@ -84,40 +91,33 @@ public class TraderInteraction : MonoBehaviour
 
         if (inventoryManager == null)
         {
-            Debug.LogError("InventoryManager chưa được gán!");
+            Debug.LogError("InventoryManager is not assigned!");
             return;
         }
 
         Inventory inventory = inventoryManager.GetInventory();
-        int coinsSpent = 0;
+        int totalSpent = 0;
 
-        foreach (var boughtEntry in boughtItems)
+        foreach (var item in boughtItems)
         {
-            ItemData boughtItem = boughtEntry.Key;
-            int quantityToBuy = boughtEntry.Value;
+            ItemData itemData = item.Key;
+            int quantity = item.Value;
+            int totalPrice = DataManagers.instance.GetItemPriceFromItemName(itemData.itemName) * quantity;
 
-            int itemPrice = DataManagers.instance.GetItemPriceFromItemName(boughtItem.itemName);
-            int totalPrice = itemPrice * quantityToBuy;
-
-            // Kiểm tra xem người chơi có đủ tiền không
             if (CashManager.instance.GetCoins() >= totalPrice)
             {
-                // Trừ tiền
-                coinsSpent += totalPrice;
+                totalSpent += totalPrice;
                 CashManager.instance.SpendCoins(totalPrice);
-
-                // Thêm vật phẩm vào kho
-                inventory.AddItemByName(boughtItem.itemName, quantityToBuy);
-
-                Debug.Log($"Mua {boughtItem.itemName} x{quantityToBuy} với giá {totalPrice} coins.");
+                inventory.AddItemByName(itemData.itemName, quantity);
+                Debug.Log($"Bought {itemData.itemName} x{quantity} for {totalPrice} coins.");
             }
             else
             {
-                Debug.LogError($"Không đủ tiền để mua {boughtItem.itemName} x{quantityToBuy}!");
+                Debug.LogError($"Not enough coins to buy {itemData.itemName} x{quantity}!");
             }
         }
 
-        Debug.Log($"Đã tiêu {coinsSpent} coins để mua vật phẩm.");
+        Debug.Log($"Spent {totalSpent} coins to buy items.");
         inventoryManager.GetInventoryDisplay().UpdateDisplay(inventory);
     }
 
@@ -125,16 +125,17 @@ public class TraderInteraction : MonoBehaviour
     {
         if (other.CompareTag("Player"))
         {
-            Debug.Log("Player Detected - Mở bảng giao dịch!");
+            Debug.Log("Player Detected - Opening trade window!");
 
             if (WindowPanel == null)
             {
-                Debug.LogError("WindowPanel chưa được gán! Không thể mở cửa sổ.");
+                Debug.LogError("WindowPanel is not assigned! Cannot open window.");
                 return;
             }
 
             EnableMarketWindow?.Invoke();
             OpenedMarketWindow?.Invoke(true);
+
             WindowPanel.gameObject.SetActive(true);
         }
     }
@@ -143,7 +144,7 @@ public class TraderInteraction : MonoBehaviour
     {
         if (other.CompareTag("Player"))
         {
-            Debug.Log("Player Rời Khỏi - Đóng bảng giao dịch!");
+            Debug.Log("Player Left - Closing trade window!");
             WindowPanel.gameObject.SetActive(false);
         }
     }
@@ -153,8 +154,5 @@ public class TraderInteraction : MonoBehaviour
         TooltipManager.Instance.HideTooltip();
         WindowPanel.gameObject.SetActive(false);
         OpenedMarketWindow?.Invoke(false);
-
     }
-
-
 }

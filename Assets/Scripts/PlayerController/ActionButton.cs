@@ -1,125 +1,157 @@
 ﻿using System;
 using UnityEngine;
+using UnityEngine.Events;
 using UnityEngine.UI;
 
 public class ActionButton : MonoBehaviour
 {
     [Header("Elements")]
     private PlayerToolSelector playerToolSelector;
+
     private PlayerBlackBoard blackBoard;
 
     [Header("Settings")]
-    [SerializeField] private Button actionButton;
-    [SerializeField] private Button sowButton;
-    [SerializeField] private Button waterButton;
-    [SerializeField] private Button harvestButton;
-    [SerializeField] private Button sleepButton;
+    [SerializeField]
+    private Button actionButton;
 
+    [SerializeField]
+    private Button sowButton;
 
+    [SerializeField]
+    private Button waterButton;
+
+    [SerializeField]
+    private Button harvestButton;
+
+    [SerializeField]
+    private Button sleepButton;
+
+    [SerializeField]
+    private Button removeWormsButton;
 
     public CropField cropField;
 
     [Header("Actions")]
-    public static Action Hoeing;//HoeAbility
-    public static Action Cutting;//HoeAbility
-    public static Action Building;//HoeAbility
-    public static Action Shoveling;//HoeAbility
-
-
+    public static Action Hoeing;
+    public static Action Cutting;
+    public static Action Building;
+    public static Action Shoveling;
     private void Start()
     {
-        // Ẩn tất cả các nút khi khởi động
-        sowButton.gameObject.SetActive(false);
-        waterButton.gameObject.SetActive(false);
-        harvestButton.gameObject.SetActive(false);
-        sleepButton.gameObject.SetActive(false);
-        blackBoard = GetComponentInParent<PlayerBlackBoard>();
-        playerToolSelector = GetComponent<PlayerToolSelector>();
-        actionButton.onClick.AddListener(DoAction);
-
-        // Đăng ký các sự kiện từ CheckCropFieldState
-        CheckGameObject.EnableSowBTTN += EnableSowButton;
-        CheckGameObject.EnableWaterBTTN += EnableWaterButton;
-        CheckGameObject.EnableHarvestBTTN += EnableHarvestButton;
-        CheckGameObject.EnableSleepBTTN += EnableSleepButton;
-
+        this.sowButton.gameObject.SetActive(false);
+        this.waterButton.gameObject.SetActive(false);
+        this.harvestButton.gameObject.SetActive(false);
+        this.sleepButton.gameObject.SetActive(false);
+        this.blackBoard = base.GetComponentInParent<PlayerBlackBoard>();
+        this.playerToolSelector = base.GetComponent<PlayerToolSelector>();
+        this.actionButton.onClick.AddListener(new UnityAction(this.DoAction));
+        this.actionButton.gameObject.SetActive(false);
+        this.removeWormsButton.gameObject.SetActive(false);
+        PlayerToolSelector playerToolSelector = this.playerToolSelector;
+        playerToolSelector.onToolSelected = (Action<PlayerToolSelector.Tool>)Delegate.Combine(playerToolSelector.onToolSelected, new Action<PlayerToolSelector.Tool>(this.OnToolChanged));
+        CheckGameObject.EnableSowBTTN = (Action<bool>)Delegate.Combine(CheckGameObject.EnableSowBTTN, new Action<bool>(this.EnableSowButton));
+        CheckGameObject.EnableWaterBTTN = (Action<bool>)Delegate.Combine(CheckGameObject.EnableWaterBTTN, new Action<bool>(this.EnableWaterButton));
+        CheckGameObject.EnableHarvestBTTN = (Action<bool>)Delegate.Combine(CheckGameObject.EnableHarvestBTTN, new Action<bool>(this.EnableHarvestButton));
+        CheckGameObject.EnableSleepBTTN = (Action<bool>)Delegate.Combine(CheckGameObject.EnableSleepBTTN, new Action<bool>(this.EnableSleepButton));
     }
 
     private void OnDestroy()
     {
-        // Hủy đăng ký sự kiện khi object bị phá hủy (tránh memory leak)
-        CheckGameObject.EnableSowBTTN -= EnableSowButton;
-        CheckGameObject.EnableWaterBTTN -= EnableWaterButton;
-        CheckGameObject.EnableHarvestBTTN -= EnableHarvestButton;
-        CheckGameObject.EnableSleepBTTN -= EnableSleepButton;
+        CheckGameObject.EnableSowBTTN = (Action<bool>)Delegate.Remove(CheckGameObject.EnableSowBTTN, new Action<bool>(this.EnableSowButton));
+        CheckGameObject.EnableWaterBTTN = (Action<bool>)Delegate.Remove(CheckGameObject.EnableWaterBTTN, new Action<bool>(this.EnableWaterButton));
+        CheckGameObject.EnableHarvestBTTN = (Action<bool>)Delegate.Remove(CheckGameObject.EnableHarvestBTTN, new Action<bool>(this.EnableHarvestButton));
+        CheckGameObject.EnableSleepBTTN = (Action<bool>)Delegate.Remove(CheckGameObject.EnableSleepBTTN, new Action<bool>(this.EnableSleepButton));
+        PlayerToolSelector playerToolSelector = this.playerToolSelector;
+        playerToolSelector.onToolSelected = (Action<PlayerToolSelector.Tool>)Delegate.Remove(playerToolSelector.onToolSelected, new Action<PlayerToolSelector.Tool>(this.OnToolChanged));
+    }
+
+    private void OnToolChanged(PlayerToolSelector.Tool selectedTool)
+    {
+        bool active = selectedTool == PlayerToolSelector.Tool.Hoe || selectedTool == PlayerToolSelector.Tool.Axe || selectedTool == PlayerToolSelector.Tool.Hammer || selectedTool == PlayerToolSelector.Tool.Pickaxe || selectedTool == PlayerToolSelector.Tool.Shovel;
+        this.actionButton.gameObject.SetActive(active);
     }
 
     public void DoAction()
     {
-        if (playerToolSelector.activeTool == PlayerToolSelector.Tool.Hoe)
+        if (this.playerToolSelector.activeTool == PlayerToolSelector.Tool.Hoe)
         {
-            // playerAnimator.PlayHoeAnimation();
-            blackBoard.hoeButtonPressed = true;
+            this.blackBoard.hoeButtonPressed = true;
+            return;
         }
-        else if(playerToolSelector.activeTool == PlayerToolSelector.Tool.Axe)
+        if (this.playerToolSelector.activeTool == PlayerToolSelector.Tool.Axe)
         {
-            blackBoard.cutButtonPressed = true;
+            this.blackBoard.cutButtonPressed = true;
+            return;
         }
-        else if (playerToolSelector.activeTool == PlayerToolSelector.Tool.Hammer)
+        if (this.playerToolSelector.activeTool == PlayerToolSelector.Tool.Hammer)
         {
-            Building?.Invoke();//Building
+            Action building = ActionButton.Building;
+            if (building == null)
+            {
+                return;
+            }
+            building();
+            return;
         }
-
-        else if(playerToolSelector.activeTool == PlayerToolSelector.Tool.Pickaxe)
+        else
         {
-            blackBoard.miningButtonPressed = true;
-            Debug.Log("domining");
+            if (this.playerToolSelector.activeTool == PlayerToolSelector.Tool.Pickaxe)
+            {
+                this.blackBoard.miningButtonPressed = true;
+                return;
+            }
+            if (this.playerToolSelector.activeTool == PlayerToolSelector.Tool.Shovel)
+            {
+                Action shoveling = ActionButton.Shoveling;
+                if (shoveling == null)
+                {
+                    return;
+                }
+                shoveling();
+            }
+            return;
         }
-
-        else if (playerToolSelector.activeTool == PlayerToolSelector.Tool.Shovel)
-        {
-            Shoveling?.Invoke();//ShovelAbility
-            Debug.Log("do Shovel");
-        }
-
-
-
     }
 
     public void OnSleepButtonPressed()
     {
-        blackBoard.sleepButtonPressed = true;
+        this.blackBoard.sleepButtonPressed = true;
     }
-
-    //Các hàm này sẽ tự động được gọi khi có sự kiện từ CheckCropFieldState
 
     public void EnableSleepButton(bool enable)
     {
-        sleepButton.gameObject.SetActive(enable);
+        this.sleepButton.gameObject.SetActive(enable);
     }
 
     public void EnableSowButton(bool enable)
     {
-        sowButton.gameObject.SetActive(enable);
+        this.sowButton.gameObject.SetActive(enable);
     }
 
     public void EnableWaterButton(bool enable)
     {
-        waterButton.gameObject.SetActive(enable);
+        this.waterButton.gameObject.SetActive(enable);
     }
 
     public void EnableHarvestButton(bool enable)
     {
-        harvestButton.gameObject.SetActive(enable);
+        this.harvestButton.gameObject.SetActive(enable);
+    }
+
+    public void EnableremoveWormsButton(bool enable)
+    {
+        this.removeWormsButton.gameObject.SetActive(enable);
     }
 
     public void OnJumpButtonPressed()
     {
-        blackBoard.jumpButtonPressed = true;    
+        this.blackBoard.jumpButtonPressed = true;
     }
 
     public void OnShovelButtonPressed()
     {
-        blackBoard.shovelButtonPressed = true;
+        this.blackBoard.shovelButtonPressed = true;
     }
+
+    
 }

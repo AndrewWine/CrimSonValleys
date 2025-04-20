@@ -14,41 +14,54 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   scheduleEntries:
   - startTime: 0.25
+    endTime: 0.259
     desiredState: 1
     targetName: MerlinHouseStopSpot
   - startTime: 0.26
+    endTime: 0.269
     desiredState: 1
     targetName: AlexFarmSpot
   - startTime: 0.27
+    endTime: 0.345
     desiredState: 4
     targetName: AlexFarmSpot
   - startTime: 0.35
+    endTime: 0.395
     desiredState: 1
     targetName: AlexFarmSpot2
   - startTime: 0.4
+    endTime: 0.495
     desiredState: 1
     targetName: AlextandMerlinHouseStopSpotSleep
   - startTime: 0.5
+    endTime: 0.595
     desiredState: 1
     targetName: BlackSmithStopSpot
   - startTime: 0.6
+    endTime: 0.629
     desiredState: 1
     targetName: Center (3)
   - startTime: 0.63
+    endTime: 0.649
     desiredState: 1
     targetName: Center (2)
   - startTime: 0.65
+    endTime: 0.679
     desiredState: 1
     targetName: Center
   - startTime: 0.68
+    endTime: 0.719
     desiredState: 1
     targetName: LumberHouseStopSpot
   - startTime: 0.72
+    endTime: 0.795
     desiredState: 1
     targetName: sheriff
   - startTime: 0.8
+    endTime: 0.849
     desiredState: 1
     targetName: AlexChurchStopSpot
   - startTime: 0.85
+    endTime: 0.99
     desiredState: 1
     targetName: AlextandMerlinHouseStopSpotSleep

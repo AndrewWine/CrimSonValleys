@@ -1,152 +1,135 @@
-﻿using System.Collections;
+﻿using System;
 using System.Collections.Generic;
 using UnityEngine;
-using System;
+
 public class BlackSmithInteraction : UIRequirementDisplay
 {
     [Header("Elements")]
     [SerializeField] private InventoryManager inventoryManager;
     [SerializeField] private GameObject WindowShopPanel;
-    [SerializeField] private GameObject WindowCraftingPanel;    
-
-
-
+    [SerializeField] private GameObject WindowCraftingPanel;
     [Header("Actions")]
     public static Action EnableSmithyWindow;
     public static Action generateItemRequire;
     public static Action<bool> OpenedSmithyWindow;
     private void Start()
     {
-        InitializeSettings();
+        this.InitializeSettings();
     }
+
     private void OnEnable()
     {
-        BlackSmithWindow.BuyItem += OnBuyItem;
-        BlackSmithWindow.SellItem += OnSellItem;
+        BlackSmithWindow.BuyItem = (Action<Dictionary<ItemData, int>>)Delegate.Combine(BlackSmithWindow.BuyItem, new Action<Dictionary<ItemData, int>>(this.OnBuyItem));
+        BlackSmithWindow.SellItem = (Action<Dictionary<ItemData, int>>)Delegate.Combine(BlackSmithWindow.SellItem, new Action<Dictionary<ItemData, int>>(this.OnSellItem));
     }
 
     private void InitializeSettings()
     {
-        WindowShopPanel.gameObject.SetActive(false);
-        WindowCraftingPanel.gameObject.SetActive(false);
+        this.WindowShopPanel.gameObject.SetActive(false);
+        this.WindowCraftingPanel.gameObject.SetActive(false);
     }
 
     private void OnDestroy()
     {
-        BlackSmithWindow.BuyItem -= OnBuyItem;
-        BlackSmithWindow.SellItem -= OnSellItem;
-
+        BlackSmithWindow.BuyItem = (Action<Dictionary<ItemData, int>>)Delegate.Remove(BlackSmithWindow.BuyItem, new Action<Dictionary<ItemData, int>>(this.OnBuyItem));
+        BlackSmithWindow.SellItem = (Action<Dictionary<ItemData, int>>)Delegate.Remove(BlackSmithWindow.SellItem, new Action<Dictionary<ItemData, int>>(this.OnSellItem));
     }
+
     private void OnSellItem(Dictionary<ItemData, int> soldItems)
     {
-
-        if (inventoryManager == null)
+        if (this.inventoryManager == null)
         {
             Debug.LogError("InventoryManager chưa được gán!");
             return;
         }
 
-        Inventory inventory = inventoryManager.GetInventory();
-        int coinsEarned = 0;
+        Inventory inventory = this.inventoryManager.GetInventory();
+        int totalCoins = 0;
 
-        foreach (var soldEntry in soldItems)
+        foreach (KeyValuePair<ItemData, int> pair in soldItems)
         {
-            ItemData soldItem = soldEntry.Key;
-            int quantityToSell = soldEntry.Value;
+            ItemData item = pair.Key;
+            int amountToSell = pair.Value;
+            InventoryItem[] inventoryItems = inventory.GetInventoryItems();
 
-            InventoryItem[] items = inventory.GetInventoryItems();
-
-            // Tìm vật phẩm trong kho để bán
-            for (int i = 0; i < items.Length; i++)
+            foreach (InventoryItem invItem in inventoryItems)
             {
-                if (items[i].itemName == soldItem.itemName)
+                if (invItem.itemName == item.itemName)
                 {
-                    int itemPrice = DataManagers.instance.GetItemPriceFromItemName(items[i].itemName);
-
-                    // Kiểm tra số lượng vật phẩm trong kho
-                    if (items[i].amount >= quantityToSell)
+                    int price = DataManagers.instance.GetItemPriceFromItemName(invItem.itemName);
+                    if (invItem.amount >= amountToSell)
                     {
-                        // Thực hiện bán vật phẩm
-                        coinsEarned += itemPrice * quantityToSell;
-                        inventory.RemoveItemByName(items[i].itemName, quantityToSell);
+                        totalCoins += price * amountToSell;
+                        inventory.RemoveItemByName(invItem.itemName, amountToSell);
+                        break;
                     }
                     else
                     {
-                        Debug.LogError($"Không đủ {soldItem.itemName} để bán! (Yêu cầu: {quantityToSell}, Hiện có: {items[i].amount})");
+                        Debug.LogError($"Không đủ {item.itemName} để bán! (Yêu cầu: {amountToSell}, Hiện có: {invItem.amount})");
+                        break;
                     }
-                    break;
                 }
             }
         }
 
-        Debug.Log($"Đã kiếm được {coinsEarned} coins.");
-        CashManager.instance.AddCoins(coinsEarned);
-
-        inventoryManager.GetInventoryDisplay().UpdateDisplay(inventory);
+        Debug.Log($"Đã kiếm được {totalCoins} coins.");
+        CashManager.instance.AddCoins(totalCoins);
+        this.inventoryManager.GetInventoryDisplay().UpdateDisplay(inventory);
     }
 
     private void OnBuyItem(Dictionary<ItemData, int> boughtItems)
     {
         Debug.Log("Buy item smithy");
 
-        if (inventoryManager == null)
+        if (this.inventoryManager == null)
         {
             Debug.LogError("InventoryManager chưa được gán!");
             return;
         }
 
-        int coinsSpent = 0;
+        int totalSpent = 0;
 
-        foreach (var boughtEntry in boughtItems)
+        foreach (KeyValuePair<ItemData, int> pair in boughtItems)
         {
-            ItemData boughtItem = boughtEntry.Key;
-            int quantity = boughtEntry.Value; // Lấy đúng số lượng của item
+            ItemData item = pair.Key;
+            int quantity = pair.Value;
 
-            int itemPrice = DataManagers.instance.GetItemPriceFromItemName(boughtItem.itemName);
-            int totalPrice = itemPrice * quantity; // Nhân với số lượng đúng
+            int itemCost = DataManagers.instance.GetItemPriceFromItemName(item.itemName) * quantity;
 
-            // Kiểm tra tiền
-            if (CashManager.instance.GetCoins() >= totalPrice)
+            if (CashManager.instance.GetCoins() >= itemCost)
             {
-                coinsSpent += totalPrice;
-                CashManager.instance.SpendCoins(totalPrice);
-
-                // Thêm vào inventory đúng số lượng
-                inventoryManager.PickUpItemCallBack(boughtItem.itemName, quantity);
-
-                Debug.Log($"Mua {boughtItem.itemName} x{quantity} với giá {totalPrice} coins.");
+                totalSpent += itemCost;
+                CashManager.instance.SpendCoins(itemCost);
+                this.inventoryManager.PickUpItemCallBack(item.itemName, quantity);
+                Debug.Log($"Mua {item.itemName} x{quantity} với giá {itemCost} coins.");
             }
             else
             {
-                Debug.LogError($"Không đủ tiền để mua {boughtItem.itemName} x{quantity}!");
+                Debug.LogError($"Không đủ tiền để mua {item.itemName} x{quantity}!");
             }
         }
 
-        Debug.Log($"Đã tiêu {coinsSpent} coins để mua vật phẩm.");
-        inventoryManager.GetInventoryDisplay().UpdateDisplay(inventoryManager.GetInventory());
+        Debug.Log($"Đã tiêu {totalSpent} coins để mua vật phẩm.");
+        this.inventoryManager.GetInventoryDisplay().UpdateDisplay(this.inventoryManager.GetInventory());
     }
-
-
-
 
     private void OnTriggerEnter(Collider other)
     {
         if (other.CompareTag("Player"))
         {
             Debug.Log("Player Detected - Mở bảng giao dịch!");
-
-            if (WindowShopPanel == null)
+            if (this.WindowShopPanel == null)
             {
                 Debug.LogError("WindowPanel chưa được gán! Không thể mở cửa sổ.");
                 return;
             }
 
             EnableSmithyWindow?.Invoke();
-            generateItemRequire?.Invoke();//UISelectedButton
+            generateItemRequire?.Invoke();
             OpenedSmithyWindow?.Invoke(true);
-            Debug.Log("Mở ShopWindow");
-            WindowShopPanel.gameObject.SetActive(true);
 
+            Debug.Log("Mở ShopWindow");
+            this.WindowShopPanel.gameObject.SetActive(true);
         }
     }
 
@@ -155,28 +138,28 @@ public class BlackSmithInteraction : UIRequirementDisplay
         if (other.CompareTag("Player"))
         {
             Debug.Log(" Player Rời Khỏi - Đóng bảng giao dịch!");
-            WindowShopPanel.gameObject.SetActive(false);
+            this.WindowShopPanel.gameObject.SetActive(false);
         }
     }
 
     public void CloseMarketWindow()
     {
         TooltipManager.Instance.HideTooltip();
-        WindowShopPanel.gameObject.SetActive(false);
+        this.WindowShopPanel.gameObject.SetActive(false);
         OpenedSmithyWindow?.Invoke(false);
     }
 
     public void OnButtonCraftPressed()
     {
-        WindowCraftingPanel.gameObject.SetActive(true);
-        WindowShopPanel.gameObject.gameObject.SetActive(false);
+        this.WindowCraftingPanel.gameObject.SetActive(true);
+        this.WindowShopPanel.gameObject.SetActive(false);
     }
 
     public void OnShopCraftButtonPressed()
     {
-        WindowShopPanel.gameObject.gameObject.SetActive(true);
-        WindowCraftingPanel.gameObject.SetActive(false);
+        this.WindowShopPanel.gameObject.SetActive(true);
+        this.WindowCraftingPanel.gameObject.SetActive(false);
     }
 
-
+  
 }

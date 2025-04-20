@@ -13,27 +13,39 @@ MonoBehaviour:
   m_Name: Mike
   m_EditorClassIdentifier: 
   scheduleEntries:
-  - startTime: 0.3
+  - startTime: 0.26
+    endTime: 0.34
     desiredState: 1
-    targetName: LumberHouseStopSpot
+    targetName: WayToMine0
   - startTime: 0.25
+    endTime: 0.26
     desiredState: 1
     targetName: PowerPlantStopSpot2
   - startTime: 0.45
+    endTime: 0.469
     desiredState: 1
     targetName: BlackSmithStopSpot
   - startTime: 0.47
+    endTime: 0.49
     desiredState: 1
     targetName: PowerPlantStopSpot2
   - startTime: 0.5
+    endTime: 0.51
     desiredState: 1
     targetName: PowerPlantStopSpot2
   - startTime: 0.52
+    endTime: 0.79
     desiredState: 1
     targetName: PowerPlantStopSpot1
   - startTime: 0.8
+    endTime: 0.84
     desiredState: 1
     targetName: MikeChurchStopSpot
   - startTime: 0.85
+    endTime: 1
     desiredState: 1
     targetName: PowerPlantStopSpot1
+  - startTime: 0.34
+    endTime: 0.44
+    desiredState: 1
+    targetName: WayToMine

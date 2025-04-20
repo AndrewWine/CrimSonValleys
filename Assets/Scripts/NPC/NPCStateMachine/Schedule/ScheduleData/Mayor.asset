@@ -14,29 +14,38 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   scheduleEntries:
   - startTime: 0.25
+    endTime: 0.34
     desiredState: 3
     targetName: MayorHouseStopSpot1
   - startTime: 0.35
+    endTime: 0.39
     desiredState: 1
     targetName: Center
   - startTime: 0.4
+    endTime: 0.49
     desiredState: 1
     targetName: ShopHouse_StopSpot
   - startTime: 0.5
+    endTime: 0.59
     desiredState: 1
     targetName: JohnAndLindaHouseStopSpot
   - startTime: 0.6
+    endTime: 0.7
     desiredState: 1
     targetName: AlextandMerlinHouseStopSpot2
   - startTime: 0.8
+    endTime: 0.48
     desiredState: 1
     targetName: MayorChurchStopSpot
   - startTime: 0.85
+    endTime: 0.87
     desiredState: 1
     targetName: MayorHouseStopSpot1
   - startTime: 0.88
+    endTime: 1
     desiredState: 1
     targetName: MayorHouseStopSpot3
-  - startTime: 0.7
+  - startTime: 0.71
+    endTime: 0.79
     desiredState: 1
     targetName: PowerPlantStopSpot

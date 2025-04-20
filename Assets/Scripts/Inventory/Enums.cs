@@ -17,7 +17,8 @@ public enum TileFieldState
     Empty,
     Sown, 
     Watered,
-    Ripened
+    Ripened,
+    Infested
 }
 
 public enum CageState

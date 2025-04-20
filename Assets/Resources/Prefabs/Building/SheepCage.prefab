@@ -133,12 +133,13 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   state: 0
+  CagePos: {fileID: 0}
   itemDrop: {fileID: 11400000, guid: 0c1ee3019bfd71c48b1e7fd4cdb3a1b1, type: 2}
   dropAmount: 0
-  nutritionValue: 0
-  harvestDuration: 0
+  nutritionValue: 70
+  harvestDuration: 200
   digestionTime: 10
-  timeUntilHarvest: 0
+  timeUntilHarvest: 200
   feedingTimer: 70
 --- !u!65 &8916794705873230622
 BoxCollider:
@@ -449,7 +450,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d6e89bbe8f01429479998e22647b8f22, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  aniamalPos: {fileID: 2889514480988822479}
   minDelay: 2
   maxDelay: 5
 --- !u!1001 &5440497465752195695

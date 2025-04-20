@@ -181,6 +181,7 @@ MonoBehaviour:
   NewGameButton: {fileID: 1587528419}
   LoadGameButton: {fileID: 1561761234}
   ExitGameButton: {fileID: 2052813251}
+  fadeScreen: {fileID: 1283540285}
 --- !u!1 &27293438
 GameObject:
   m_ObjectHideFlags: 0
@@ -950,6 +951,81 @@ Transform:
   m_Children: []
   m_Father: {fileID: 2961673914086830399}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &1283540283
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1283540284}
+  - component: {fileID: 1283540286}
+  - component: {fileID: 1283540285}
+  m_Layer: 5
+  m_Name: fadeScreen
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!224 &1283540284
+RectTransform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1283540283}
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: -3.9974446}
+  m_LocalScale: {x: 1.0002213, y: 1.0002213, z: 1.0002213}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 1892045164}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+  m_AnchorMin: {x: 0.5, y: 0.5}
+  m_AnchorMax: {x: 0.5, y: 0.5}
+  m_AnchoredPosition: {x: 0.0036315918, y: 0}
+  m_SizeDelta: {x: 1920, y: 1080}
+  m_Pivot: {x: 0.5, y: 0.5}
+--- !u!114 &1283540285
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1283540283}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: fe87c0e1cc204ed48ad3b37840f39efc, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  m_Material: {fileID: 0}
+  m_Color: {r: 0, g: 0, b: 0, a: 0}
+  m_RaycastTarget: 0
+  m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
+  m_Maskable: 1
+  m_OnCullStateChanged:
+    m_PersistentCalls:
+      m_Calls: []
+  m_Sprite: {fileID: 0}
+  m_Type: 0
+  m_PreserveAspect: 0
+  m_FillCenter: 1
+  m_FillMethod: 4
+  m_FillAmount: 1
+  m_FillClockwise: 1
+  m_FillOrigin: 0
+  m_UseSpriteMesh: 0
+  m_PixelsPerUnitMultiplier: 1
+--- !u!222 &1283540286
+CanvasRenderer:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1283540283}
+  m_CullTransparentMesh: 1
 --- !u!224 &1370136346 stripped
 RectTransform:
   m_CorrespondingSourceObject: {fileID: 3408837122954497156, guid: 260f85fdc0b91f6439325b4e62662efa,
@@ -1867,6 +1943,7 @@ RectTransform:
   m_Children:
   - {fileID: 389298611}
   - {fileID: 1370136346}
+  - {fileID: 1283540284}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
@@ -21266,7 +21343,22 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 353b7152e266fec47b8827f1bf4573db, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  state: 0
   tileRenderer: {fileID: 8617810192513666414}
+  infestedMaterial: {fileID: 0}
+  parentField: {fileID: 0}
+  tileGridPosition: {x: 0, y: 0, z: 0}
+  placedItemData:
+    itemName: 
+    plantedItemName: 
+    position: {x: 0, y: 0, z: 0}
+    rotation: {x: 0, y: 0, z: 0, w: 0}
+    fieldID: 
+    isFullyGrown: 0
+    timeToGrowUp: 0
+    tileFieldState: 0
+  cropData: {fileID: 0}
+  hasCrop: 0
 --- !u!33 &3322744469202501040
 MeshFilter:
   m_ObjectHideFlags: 0
@@ -27296,9 +27388,12 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   itemData: {fileID: 0}
-  tilesParent: {fileID: 4294592628402628949}
-  cropData: {fileID: 11400000, guid: 93b826f3b918f92418eccb25e322bf57, type: 2}
+  fieldID: 
   state: 0
+  cropData: {fileID: 11400000, guid: 93b826f3b918f92418eccb25e322bf57, type: 2}
+  cropTiles: []
+  itemPlaced: []
+  tilesParent: {fileID: 4294592628402628949}
 --- !u!4 &4329298081897387773
 Transform:
   m_ObjectHideFlags: 0
@@ -33501,9 +33596,12 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   itemData: {fileID: 0}
-  tilesParent: {fileID: 6466313450803623230}
-  cropData: {fileID: 11400000, guid: 93b826f3b918f92418eccb25e322bf57, type: 2}
+  fieldID: 
   state: 0
+  cropData: {fileID: 11400000, guid: 93b826f3b918f92418eccb25e322bf57, type: 2}
+  cropTiles: []
+  itemPlaced: []
+  tilesParent: {fileID: 6466313450803623230}
 --- !u!1 &5411190704845497853
 GameObject:
   m_ObjectHideFlags: 0
@@ -42192,7 +42290,22 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 353b7152e266fec47b8827f1bf4573db, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  state: 0
   tileRenderer: {fileID: 8149227909771900600}
+  infestedMaterial: {fileID: 0}
+  parentField: {fileID: 0}
+  tileGridPosition: {x: 0, y: 0, z: 0}
+  placedItemData:
+    itemName: 
+    plantedItemName: 
+    position: {x: 0, y: 0, z: 0}
+    rotation: {x: 0, y: 0, z: 0, w: 0}
+    fieldID: 
+    isFullyGrown: 0
+    timeToGrowUp: 0
+    tileFieldState: 0
+  cropData: {fileID: 0}
+  hasCrop: 0
 --- !u!1 &6858874022755522735
 GameObject:
   m_ObjectHideFlags: 0

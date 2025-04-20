@@ -242,11 +242,12 @@ public class QuestUI : MonoBehaviour
         if (quest != null)
         {
             // Kiểm tra nếu nhiệm vụ không yêu cầu vật phẩm
-            if (quest.GetRequirements().Count == 0)
+            if (questManager.CanCompleteQuest(quest))
             {
                 // Nếu không có vật phẩm yêu cầu, có thể hoàn thành ngay lập tức
                 questManager.CompleteQuest(quest.questName, quest.questGiverID);
                 Debug.Log($"Nhiệm vụ '{quest.questName}' đã hoàn thành vì không có vật phẩm yêu cầu.");
+                return;
             }
             else
             {
@@ -268,6 +269,8 @@ public class QuestUI : MonoBehaviour
         {
             string npcID = "NPC_ID";  // Đây là ID thực tế của NPC giao nhiệm vụ
             questManager.ActivateQuest(selectedQuest, npcID);
+            return;
+
         }
         else
         {

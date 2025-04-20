@@ -97,6 +97,7 @@ public class QuestGiver : MonoBehaviour
     }
 
 
+    public List<Quest> availableQuests = new List<Quest>();
 
 
 }
